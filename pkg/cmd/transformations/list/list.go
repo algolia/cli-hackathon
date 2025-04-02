@@ -36,7 +36,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 
 	cmd := &cobra.Command{
 		Use:     "list",
-		Aliases: []string{"l"},
+		Aliases: []string{"l", "ls"},
 		Args:    validators.NoArgs(),
 		Short:   "List transformations",
 		Example: heredoc.Doc(`

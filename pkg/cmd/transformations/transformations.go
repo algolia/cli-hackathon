@@ -17,7 +17,7 @@ import (
 func NewTransformationsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "transformations",
-		Aliases: []string{"transformations", "transfo"},
+		Aliases: []string{"transformations", "transfo", "tr", "t"},
 		Short:   "Manage your Algolia transformations",
 	}
 

@@ -1,11 +1,16 @@
 package link
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
+	bubblefile "github.com/algolia/cli/pkg/cmd/transformations/bubble/file"
 	"github.com/algolia/cli/pkg/cmd/transformations/link/picker"
 	"github.com/spf13/cobra"
+	"os"
+	"path"
 
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -86,7 +91,17 @@ func runNewCmd(opts *NewOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Linking to destination")
 
-	transformationID := ""
+	transformationID, err := getInfoFromPackageJSON()
+	if err != nil {
+		opts.IO.StopProgressIndicator()
+		return err
+	}
+
+	if transformationID == "" {
+		opts.IO.StopProgressIndicator()
+
+		return errors.New("please save your transformation first: algolia cli transformations save")
+	}
 
 	updateDestination, err := client.UpdateDestination(client.NewApiUpdateDestinationRequest(
 		opts.DestinationID,
@@ -98,7 +113,38 @@ func runNewCmd(opts *NewOptions) error {
 
 	opts.IO.StopProgressIndicator()
 
-	println(fmt.Sprintf("Transformation '%s' linked to destination '%s'", transformationID, updateDestination.GetDestinationID()))
+	_, _ = fmt.Fprintf(
+		opts.IO.Out,
+		"Transformation '%s' linked to destination '%s'",
+		transformationID,
+		updateDestination.GetDestinationID(),
+	)
 
 	return nil
+}
+
+func getInfoFromPackageJSON() (string, error) {
+	// This is a placeholder for the actual implementation
+	dir := "./"
+
+	if _, err := os.Stat(path.Join(dir, "package.json")); os.IsNotExist(err) {
+		transformationPath := bubblefile.NewBubbleFile()
+
+		dir = path.Dir(transformationPath)
+	}
+
+	pkg, err := os.ReadFile(path.Join(dir, "package.json"))
+	if err != nil {
+		return "", fmt.Errorf("unable to find 'package.json' file at path '%s': %w", dir, err)
+	}
+
+	var packageJson struct {
+		TransformationID string `json:"transformationID"`
+	}
+
+	if err = json.Unmarshal(pkg, &packageJson); err != nil {
+		return "", fmt.Errorf("unable to read 'package.json' at path '%s': %w", dir, err)
+	}
+
+	return packageJson.TransformationID, nil
 }
