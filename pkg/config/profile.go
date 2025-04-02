@@ -34,9 +34,9 @@ func (p *Profile) LoadDefault() {
 }
 
 func (p *Profile) GetApplicationID() (string, error) {
-	if os.Getenv("ALGOLIA_APPLICATION_ID") != "" {
-		return os.Getenv("ALGOLIA_APPLICATION_ID"), nil
-	}
+	//if os.Getenv("ALGOLIA_APPLICATION_ID") != "" {
+	//	return os.Getenv("ALGOLIA_APPLICATION_ID"), nil
+	//}
 
 	if p.ApplicationID != "" {
 		return p.ApplicationID, nil
@@ -57,9 +57,9 @@ func (p *Profile) GetApplicationID() (string, error) {
 }
 
 func (p *Profile) GetAPIKey() (string, error) {
-	if os.Getenv("ALGOLIA_API_KEY") != "" {
-		return os.Getenv("ALGOLIA_API_KEY"), nil
-	}
+	//if os.Getenv("ALGOLIA_API_KEY") != "" {
+	//	return os.Getenv("ALGOLIA_API_KEY"), nil
+	//}
 
 	if p.APIKey != "" {
 		return p.APIKey, nil
