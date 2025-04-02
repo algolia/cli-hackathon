@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -50,7 +49,6 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 			# New transformation 
 			$ algolia transfo new <transformation-name>
 			$ algolia transfo new <transformation-name> --source <uuid>
-			$ algolia transfo new <transformation-name> --source <uuid> --file <path-to-file.json>
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -66,7 +64,6 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.SourceID, "source", "s", "", "The SourceID (UUID) to fetch sample from, when omitted, your list of source will be prompted.")
-	cmd.Flags().StringVarP(&opts.SampleFile, "file", "f", "", "Path to the file containing a sample JSON object to run your transformation against.")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -113,20 +110,6 @@ func runNewCmd(opts *NewOptions) error {
 
 		opts.Sample = resp.GetData()[0]
 
-	} else {
-		opts.IO.StartProgressIndicatorWithLabel("Reading sample from file")
-
-		data, err := os.ReadFile(opts.SampleFile)
-		if err != nil {
-			return fmt.Errorf("unable to open file %s: %w", opts.SampleFile, err)
-		}
-
-		err = json.Unmarshal(data, &opts.Sample)
-		if err != nil {
-			return err
-		}
-
-		opts.IO.StopProgressIndicator()
 	}
 
 	opts.OutputDirectory = fmt.Sprintf("output%c%s", os.PathSeparator, opts.TransformationName)
