@@ -1,3 +1,5 @@
+import {Helper} from "./helper";
+
 /**
  * This is the default javascript transformation function, you cannot rename it or change its signature.
  * This function will be called for each item in the dataset.
@@ -5,7 +7,7 @@
  * @param {Helper} helper - Use it to reference Secrets and get Metadata.
  * @returns {SourceRecord|Array<SourceRecord>} - Return a record or an array of records.
  */
-async function transform(record, helper) {
+async function transform(record, helper:Helper) {
 
 
   // If you want to exclude a record, you can just return undefined.

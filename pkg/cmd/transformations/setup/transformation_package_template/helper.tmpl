@@ -1,0 +1,34 @@
+/**
+ * Helpers for the transformation service.
+ * @property secrets - Get secret.
+ * @property getMetadata - Get your transformation metadata.
+ */
+export interface Helper {
+secrets: Secrets;
+getMetadata: () => Metadata;
+}
+
+/**
+ * Metadata object that contains the appID, taskID and indexName.
+ * @property appID - The appID of the task.
+ * @property taskID - The taskID of the task.
+ * @property indexName - The indexName of the task.
+ */
+interface Metadata {
+appID: string;
+taskID: string;
+indexName: string;
+actionType: ActionType;
+}
+
+type ActionType = 'addObject' | 'updateObject' | 'partialUpdateObject' | 'partialUpdateObjectNoCreate' | 'deleteObject';
+
+interface Secrets {
+get(name: AvailableSecret): string;
+}
+
+interface Secrets {
+get(name: AvailableSecret): string;
+}
+
+type AvailableSecret = 'test'

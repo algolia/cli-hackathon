@@ -19,8 +19,18 @@ type pkg struct {
 
 type code struct{}
 
+type helper struct{}
+
 func Generate(tmpl PackageTemplate) error {
 	if err := tmpl.execute("package.tmpl", "package.json", pkg{Name: tmpl.TransformationName}); err != nil {
+		return err
+	}
+
+	if err := tmpl.execute("code.tmpl", "index.ts", code{}); err != nil {
+		return err
+	}
+
+	if err := tmpl.execute("helper.tmpl", "helper.ts", helper{}); err != nil {
 		return err
 	}
 

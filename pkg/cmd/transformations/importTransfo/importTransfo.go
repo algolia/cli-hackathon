@@ -6,9 +6,9 @@ import (
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
+	bubblelist "github.com/algolia/cli/pkg/cmd/transformations/bubble/list"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
@@ -43,7 +43,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "Import existing transformation in your IDE",
 		Example: heredoc.Doc(`
 			# Import transformation by ID
-			$ algolia transformations import 903a251f-1524-4823-8b7e-81a9376fff0e
+			$ algolia transformations import
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runImportCmd(opts, args)
@@ -68,59 +68,13 @@ func runImportCmd(opts *ImportOptions, args []string) error {
 	if opts.TransformationID == "" {
 		opts.IO.StartProgressIndicatorWithLabel("Listing transformations")
 
-		resp, err := client.ListTransformations(client.NewApiListTransformationsRequest())
+		opts.TransformationID, err = PickTransformation(client)
 		if err != nil {
 			return err
 		}
 
-		items := make([]list.Item, 0, len(resp.Transformations))
-
-		for _, transformation := range resp.Transformations {
-			items = append(items, item{name: transformation.GetName(), uuid: transformation.GetTransformationID()})
-		}
-
-		list := list.New(items, list.NewDefaultDelegate(), 20, 0)
-		list.Title = "Your transformations"
-
-		m := model{list: list}
-
 		opts.IO.StopProgressIndicator()
-
-		if _, err := tea.NewProgram(&m).Run(); err != nil {
-			fmt.Println("Error running program:", err)
-			os.Exit(1)
-		}
-
-		opts.TransformationID = m.choice
 	}
-
-	fmt.Println(opts.TransformationID)
-
-	//if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
-	//	p, err := opts.PrintFlags.ToPrinter()
-	//	if err != nil {
-	//		return err
-	//	}
-	//	return p.Print(opts.IO, nil)
-	//}
-	//
-	//if err := opts.IO.StartPager(); err != nil {
-	//	fmt.Fprintf(opts.IO.ErrOut, "error starting pager: %v\n", err)
-	//}
-	//defer opts.IO.StopPager()
-	//
-	//table := printers.NewTablePrinter(opts.IO)
-	//if table.IsTTY() {
-	//	table.AddField("NAME", nil, nil)
-	//	table.AddField("ENTRIES", nil, nil)
-	//	table.AddField("SIZE", nil, nil)
-	//	table.AddField("UPDATED AT", nil, nil)
-	//	table.AddField("CREATED AT", nil, nil)
-	//	table.AddField("LAST BUILD DURATION", nil, nil)
-	//	table.AddField("PRIMARY", nil, nil)
-	//	table.AddField("REPLICAS", nil, nil)
-	//	table.EndRow()
-	//}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching transformation")
 	res, err := client.GetTransformation(client.NewApiGetTransformationRequest(opts.TransformationID))
@@ -143,49 +97,24 @@ func runImportCmd(opts *ImportOptions, args []string) error {
 	return nil
 }
 
-var docStyle = lipgloss.NewStyle().Margin(1, 2)
-
-type item struct {
-	name, uuid string
-}
-
-func (i item) Title() string       { return i.name }
-func (i item) Description() string { return i.uuid }
-func (i item) FilterValue() string { return i.name }
-
-type model struct {
-	list   list.Model
-	choice string
-}
-
-func (m *model) Init() tea.Cmd {
-	return nil
-}
-
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch keypress := msg.String(); keypress {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-
-		case "enter":
-			i, ok := m.list.SelectedItem().(item)
-			if ok {
-				m.choice = string(i.uuid)
-			}
-			return m, tea.Quit
-		}
-	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v)
+func PickTransformation(client *ingestion.APIClient) (string, error) {
+	resp, err := client.ListTransformations(client.NewApiListTransformationsRequest())
+	if err != nil {
+		return "", err
 	}
 
-	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
-	return m, cmd
-}
+	items := make([]list.Item, 0, len(resp.Transformations))
 
-func (m *model) View() string {
-	return docStyle.Render(m.list.View())
+	for _, transformation := range resp.Transformations {
+		items = append(items, bubblelist.Item{Name: transformation.GetName(), UUID: transformation.GetTransformationID()})
+	}
+
+	list := bubblelist.NewBubbleList("transformations", items)
+
+	if _, err := tea.NewProgram(&list).Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
+	}
+
+	return list.Choice, nil
 }
