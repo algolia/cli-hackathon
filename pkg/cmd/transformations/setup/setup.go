@@ -2,21 +2,18 @@ package setup
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	"github.com/spf13/cobra"
 
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/source_picker"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformation_name"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/printers"
 	"github.com/algolia/cli/pkg/validators"
-
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
 type NewOptions struct {
@@ -25,7 +22,9 @@ type NewOptions struct {
 
 	IngestionClient func() (*ingestion.APIClient, error)
 
-	SourceID string
+	TransformationName string
+	SourceID           string
+	Sample             map[string]any
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -49,6 +48,8 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia transfo new transformation-name --source <uuid>
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			opts.TransformationName = args[0]
+
 			return runNewCmd(opts)
 		},
 		Annotations: map[string]string{
@@ -57,8 +58,7 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().
-		StringVarP(&opts.SourceID, "source", "s", "", "The SourceID (UUID) to fetch sample from, when omitted, your list of source will be prompted")
+	cmd.Flags().StringVarP(&opts.SourceID, "source", "s", "", "The SourceID (UUID) to fetch sample from, when omitted, your list of source will be prompted")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -71,46 +71,36 @@ func runNewCmd(opts *NewOptions) error {
 		return err
 	}
 
+	if opts.TransformationName == "" {
+		opts.TransformationName, err = transformation_name.Prompt()
+		if err != nil {
+			return err
+		}
+	}
+
 	if opts.SourceID == "" {
 		opts.IO.StartProgressIndicatorWithLabel("Listing sources")
 
-		resp, err := client.ListSources(client.NewApiListSourcesRequest().WithType([]ingestion.SourceType{ingestion.SOURCE_TYPE_JSON, ingestion.SOURCE_TYPE_CSV, ingestion.SOURCE_TYPE_DOCKER, ingestion.SOURCE_TYPE_BIGQUERY}).WithItemsPerPage(100))
+		opts.SourceID, err = source_picker.PickSource(client)
 		if err != nil {
 			return err
 		}
-
-		items := make([]list.Item, 0, len(resp.Sources))
-
-		for _, source := range resp.Sources {
-			items = append(items, item{title: fmt.Sprintf("%s: %s", source.GetType(), source.GetName()), uuid: source.GetSourceID()})
-		}
-
-		list := list.New(items, list.NewDefaultDelegate(), 20, 0)
-		list.Title = "Your sources"
-
-		m := model{list: list}
 
 		opts.IO.StopProgressIndicator()
-
-		if _, err := tea.NewProgram(&m).Run(); err != nil {
-			fmt.Println("Error running program:", err)
-			os.Exit(1)
-		}
-
-		opts.SourceID = m.choice
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel("Sampling source")
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Sampling source %s", opts.SourceID))
 
-	fmt.Println(opts.SourceID)
-
-	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
-		p, err := opts.PrintFlags.ToPrinter()
-		if err != nil {
-			return err
-		}
-		return p.Print(opts.IO, nil)
+	resp, err := client.ValidateSourceBeforeUpdate(client.NewApiValidateSourceBeforeUpdateRequest(opts.SourceID, ingestion.NewEmptySourceUpdate()))
+	if err != nil {
+		return err
 	}
+
+	if !resp.HasData() || len(resp.GetData()) == 0 {
+		return fmt.Errorf("unable to sample source %s: %s", opts.SourceID, resp.GetMessage())
+	}
+
+	opts.Sample = resp.GetData()[0]
 
 	if err := opts.IO.StartPager(); err != nil {
 		fmt.Fprintf(opts.IO.ErrOut, "error starting pager: %v\n", err)
@@ -162,49 +152,4 @@ func runNewCmd(opts *NewOptions) error {
 	return table.Render()
 }
 
-var docStyle = lipgloss.NewStyle().Margin(1, 2)
-
-type item struct {
-	title, uuid string
-}
-
-func (i item) Title() string       { return i.title }
-func (i item) Description() string { return i.uuid }
-func (i item) FilterValue() string { return i.title }
-
-type model struct {
-	list   list.Model
-	choice string
-}
-
-func (m *model) Init() tea.Cmd {
-	return nil
-}
-
-func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch keypress := msg.String(); keypress {
-		case "q", "ctrl+c":
-			return m, tea.Quit
-
-		case "enter":
-			i, ok := m.list.SelectedItem().(item)
-			if ok {
-				m.choice = string(i.uuid)
-			}
-			return m, tea.Quit
-		}
-	case tea.WindowSizeMsg:
-		h, v := docStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v)
-	}
-
-	var cmd tea.Cmd
-	m.list, cmd = m.list.Update(msg)
-	return m, cmd
-}
-
-func (m *model) View() string {
-	return docStyle.Render(m.list.View())
-}
+/////////////////// bubbles stuff for list selection
