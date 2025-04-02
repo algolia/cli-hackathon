@@ -96,11 +96,11 @@ func runImportCmd(opts *ImportOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Generating output package folder at path '%s'", outputDirectory))
 
-	if err := os.MkdirAll(outputDirectory, 0o750); err != nil {
+	if err = os.MkdirAll(outputDirectory, 0o750); err != nil {
 		return fmt.Errorf("unable to create transformation folder with name '%s': %w", outputDirectory, err)
 	}
 
-	if err := transformationpackagetemplate.Generate(transformationpackagetemplate.PackageTemplate{
+	if err = transformationpackagetemplate.Generate(transformationpackagetemplate.PackageTemplate{
 		TransformationName: res.Name,
 		Sample:             resp.GetData()[0],
 		Code:               &res.Code,

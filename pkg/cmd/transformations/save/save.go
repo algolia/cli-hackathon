@@ -90,26 +90,46 @@ func runSaveCmd(opts *SaveOptions) error {
 		return fmt.Errorf("unable to find 'package.json' file at path '%s': %w", dir, err)
 	}
 
-	var packageJson struct{ Name string }
+	var packageJson struct {
+		Name             string `json:"name"`
+		TransformationID string `json:"transformationID"`
+	}
 
-	if err := json.Unmarshal(pkg, &packageJson); err != nil {
+	if err = json.Unmarshal(pkg, &packageJson); err != nil {
 		return fmt.Errorf("unable to read 'package.json' at path '%s': %w", dir, err)
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Saving transformation at path '%s'", opts.TransformationPath))
+	// Create a new transfo
+	if packageJson.TransformationID == "" {
+		opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Saving transformation at path '%s'", opts.TransformationPath))
 
-	resp, err := client.CreateTransformation(
-		client.NewApiCreateTransformationRequest(
-			ingestion.NewEmptyTransformationCreate().
-				SetCode(string(code)).
-				SetName(packageJson.Name).
+		resp, err := client.CreateTransformation(
+			client.NewApiCreateTransformationRequest(
+				ingestion.NewTransformationCreate(string(code), packageJson.Name).
+					SetDescription("Transformation created from the Algolia CLI tool"),
+			))
+		if err != nil {
+			return err
+		}
+
+		transformationpackagetemplate.RefreshPackageJson(packageJson.Name, resp.GetTransformationID())
+
+		opts.IO.StopProgressIndicator()
+
+		return nil
+	}
+
+	// Update an existing transfo
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Updating transformation at path '%s'", opts.TransformationPath))
+	_, err = client.UpdateTransformation(
+		client.NewApiUpdateTransformationRequest(
+			packageJson.TransformationID,
+			ingestion.NewTransformationCreate(string(code), packageJson.Name).
 				SetDescription("Transformation created from the Algolia CLI tool"),
 		))
 	if err != nil {
 		return err
 	}
-
-	transformationpackagetemplate.RefreshPackageJson(packageJson.Name, resp.GetTransformationID())
 
 	opts.IO.StopProgressIndicator()
 
