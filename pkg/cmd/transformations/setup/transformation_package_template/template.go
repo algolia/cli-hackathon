@@ -38,6 +38,10 @@ func Generate(tmpl PackageTemplate) error {
 		return err
 	}
 
+	if err := tmpl.execute("tsconfig.tmpl", "tsconfig.json", helper{}); err != nil {
+		return err
+	}
+
 	if err := tmpl.execute("code.tmpl", "index.ts", code{}); err != nil {
 		return err
 	}
