@@ -1,4 +1,4 @@
-package save
+package bubblefile
 
 import (
 	"errors"
@@ -30,11 +30,11 @@ func (m model) Init() tea.Cmd {
 	return m.filepicker.Init()
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "q":
+		switch msg.Type {
+		case tea.KeyCtrlC, tea.KeyEsc:
 			m.quitting = true
 			return m, tea.Quit
 		}
@@ -45,12 +45,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	m.filepicker, cmd = m.filepicker.Update(msg)
 
-	// Did the user select a file?
-	if didSelect, path := m.filepicker.DidSelectFile(msg); didSelect {
-		// Get the path of the selected file.
-		m.selectedFile = path
-	}
-
 	// Did the user select a disabled file?
 	// This is only necessary to display an error to the user.
 	if didSelect, path := m.filepicker.DidSelectDisabledFile(msg); didSelect {
@@ -58,6 +52,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.err = errors.New(path + " is not valid.")
 		m.selectedFile = ""
 		return m, tea.Batch(cmd, clearErrorAfter(2*time.Second))
+	}
+
+	// Did the user select a file?
+	if didSelect, path := m.filepicker.DidSelectFile(msg); didSelect {
+		// Get the path of the selected file.
+		m.selectedFile = path
+		m.quitting = true
+		return m, tea.Quit
 	}
 
 	return m, cmd
@@ -80,15 +82,17 @@ func (m model) View() string {
 	return s.String()
 }
 
-func main() {
+func NewBubbleFile() string {
 	fp := filepicker.New()
 	fp.AllowedTypes = []string{".js"}
-	fp.CurrentDirectory, _ = os.UserHomeDir()
+	fp.CurrentDirectory, _ = os.Getwd()
 
-	m := model{
-		filepicker: fp,
+	m := model{filepicker: fp}
+
+	if _, err := tea.NewProgram(&m).Run(); err != nil {
+		fmt.Println("Error running program:", err)
+		os.Exit(1)
 	}
-	tm, _ := tea.NewProgram(&m).Run()
-	mm := tm.(model)
-	fmt.Println("\n  You selected: " + m.filepicker.Styles.Selected.Render(mm.selectedFile) + "\n")
+
+	return m.selectedFile
 }
