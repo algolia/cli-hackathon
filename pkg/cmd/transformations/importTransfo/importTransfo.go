@@ -2,6 +2,8 @@ package importTransfo
 
 import (
 	"fmt"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/source_picker"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformation_package_template"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
@@ -83,15 +85,44 @@ func runImportCmd(opts *ImportOptions, args []string) error {
 		return err
 	}
 
-	cs := opts.IO.ColorScheme()
-	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(
-			opts.IO.Out,
-			"%s Successfully fetched %s \n%s\n",
-			cs.SuccessIcon(),
-			res.TransformationID,
-			res.Code,
-		)
+	//cs := opts.IO.ColorScheme()
+	//if opts.IO.IsStdoutTTY() {
+	//	fmt.Fprintf(
+	//		opts.IO.Out,
+	//		"%s Successfully fetched %s \n%s\n",
+	//		cs.SuccessIcon(),
+	//		res.TransformationID,
+	//		res.Code,
+	//	)
+	//}
+
+	sourceID, err := source_picker.PickSource(client)
+	if err != nil {
+		return err
+	}
+
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Sampling source %s", sourceID))
+
+	resp, err := client.ValidateSourceBeforeUpdate(client.NewApiValidateSourceBeforeUpdateRequest(sourceID, ingestion.NewEmptySourceUpdate()))
+	if err != nil {
+		return err
+	}
+
+	outputDirectory := fmt.Sprintf("output%c%s", os.PathSeparator, res.Name)
+
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Generating output package folder at path '%s'", outputDirectory))
+
+	if err := os.MkdirAll(outputDirectory, 0o750); err != nil {
+		return fmt.Errorf("unable to create transformation folder with name '%s': %w", outputDirectory, err)
+	}
+
+	if err := transformation_package_template.Generate(transformation_package_template.PackageTemplate{
+		OutputDirectory:    outputDirectory,
+		TransformationName: res.Name,
+		Sample:             resp.GetData()[0],
+		Code:               &res.Code,
+	}); err != nil {
+		return err
 	}
 
 	return nil

@@ -11,6 +11,7 @@ type PackageTemplate struct {
 	OutputDirectory    string
 	TransformationName string
 	Sample             map[string]any
+	Code               *string
 }
 
 type pkg struct {
@@ -19,6 +20,10 @@ type pkg struct {
 
 type sample struct {
 	Sample string
+}
+
+type code struct {
+	Code *string
 }
 
 type helper struct{}
@@ -37,7 +42,7 @@ func Generate(tmpl PackageTemplate) error {
 		return err
 	}
 
-	if err := tmpl.execute("code.tmpl", "index.js", map[string]any{}); err != nil {
+	if err := tmpl.execute("code.tmpl", "index.js", code{Code: tmpl.Code}); err != nil {
 		return err
 	}
 

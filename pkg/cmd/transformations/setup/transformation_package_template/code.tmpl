@@ -1,6 +1,9 @@
 /** @typedef {typeof import('./sample.js')} SourceRecord */
 /** @typedef {import('./helper.js').Helper} Helper */
 
+{{if .Code -}}
+{{.Code}}
+{{else -}}
 /**
  * This is the default javascript transformation function, you cannot rename it or change its signature.
  * This function will be called for each item in the dataset.
@@ -14,3 +17,4 @@ async function transform(record, helper) {
     // If you want to return multiple records, you can return an array of records.
     return record;
 }
+{{ end -}}
