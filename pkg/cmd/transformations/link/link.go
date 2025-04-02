@@ -78,8 +78,22 @@ func runNewCmd(opts *NewOptions) error {
 		return err
 	}
 
+	_, err = os.ReadFile("./package.json")
+	if err != nil {
+		return fmt.Errorf("unable to find 'package.json' file. Please save your transformation first with:\n$ algolia cli transformations save")
+	}
+
+	transformationID, err := getInfoFromPackageJSON()
+	if err != nil {
+		return err
+	}
+
+	if transformationID == "" {
+		return errors.New("please save your transformation first: algolia cli transformations save")
+	}
+
 	if opts.DestinationID == "" {
-		opts.DestinationID, err = picker.PickDestination(client)
+		opts.DestinationID, err = picker.PickDestination(client, transformationID)
 		if err != nil {
 			return err
 		}
@@ -90,18 +104,6 @@ func runNewCmd(opts *NewOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Linking to destination")
-
-	transformationID, err := getInfoFromPackageJSON()
-	if err != nil {
-		opts.IO.StopProgressIndicator()
-		return err
-	}
-
-	if transformationID == "" {
-		opts.IO.StopProgressIndicator()
-
-		return errors.New("please save your transformation first: algolia cli transformations save")
-	}
 
 	updateDestination, err := client.UpdateDestination(client.NewApiUpdateDestinationRequest(
 		opts.DestinationID,

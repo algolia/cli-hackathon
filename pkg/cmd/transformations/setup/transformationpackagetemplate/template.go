@@ -11,6 +11,7 @@ import (
 
 type PackageTemplate struct {
 	TransformationName string
+	TransformationID   string
 	Sample             map[string]any
 	Code               *string
 }
@@ -44,7 +45,7 @@ var sampleTemplate string
 var helperTemplate string
 
 func Generate(tmpl PackageTemplate) error {
-	if err := execute(packageTemplate, "package.json", pkg{Name: tmpl.TransformationName}); err != nil {
+	if err := execute(packageTemplate, "package.json", pkg{Name: tmpl.TransformationName, ID: tmpl.TransformationID}); err != nil {
 		return err
 	}
 

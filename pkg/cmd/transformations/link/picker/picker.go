@@ -44,7 +44,7 @@ func selectDestination(items []list.Item) (string, error) {
 	return destinations.Choice, nil
 }
 
-func PickDestination(client *ingestion.APIClient) (string, error) {
+func PickDestination(client *ingestion.APIClient, transformationID string) (string, error) {
 	resp, err := client.ListDestinations(
 		client.
 			NewApiListDestinationsRequest().
@@ -56,7 +56,7 @@ func PickDestination(client *ingestion.APIClient) (string, error) {
 	}
 
 	items := make([]list.Item, 0, len(resp.Destinations))
-	hasTransformationID := make(map[string]bool, len(resp.Destinations))
+	transformationRelations := make(map[string]string, len(resp.Destinations))
 
 	for _, destination := range resp.GetDestinations() {
 		indexName, hasIndexName := destination.Input.DestinationIndexName.GetIndexNameOk()
@@ -68,7 +68,7 @@ func PickDestination(client *ingestion.APIClient) (string, error) {
 
 		if len(destination.GetTransformationIDs()) > 0 {
 			itemName = fmt.Sprintf("%s (linked)", itemName)
-			hasTransformationID[destination.GetDestinationID()] = true
+			transformationRelations[destination.GetDestinationID()] = destination.GetTransformationIDs()[0]
 		}
 
 		items = append(items, bubblelist.Item{
@@ -82,7 +82,11 @@ func PickDestination(client *ingestion.APIClient) (string, error) {
 		return "", err
 	}
 
-	if hasTransformationID[choice] {
+	if transformationID == transformationRelations[choice] {
+		return "", fmt.Errorf("transformation is already linked to this destination")
+	}
+
+	if transformationRelations[choice] != "" {
 		decisions := []bubblelist.Item{
 			{Name: "Replace the existing transformation with the new one", UUID: string(Replace)},
 			{Name: "Clone the destination and attach the new transformation to it", UUID: string(Clone)},

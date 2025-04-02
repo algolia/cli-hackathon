@@ -104,6 +104,7 @@ func runImportCmd(opts *ImportOptions) error {
 		TransformationName: res.Name,
 		Sample:             resp.GetData()[0],
 		Code:               &res.Code,
+		TransformationID:   opts.TransformationID,
 	}); err != nil {
 		return err
 	}
