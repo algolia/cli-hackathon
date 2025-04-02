@@ -2,6 +2,7 @@ package transformations
 
 import (
 	"github.com/algolia/cli/pkg/cmd/transformations/importTransfo"
+	"github.com/algolia/cli/pkg/cmd/transformations/sample"
 	"github.com/algolia/cli/pkg/cmd/transformations/save"
 	"github.com/spf13/cobra"
 
@@ -24,6 +25,7 @@ func NewTransformationsCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(setup.NewSetupCmd(f))
 	cmd.AddCommand(save.NewSaveCmd(f))
 	cmd.AddCommand(importTransfo.NewImportCmd(f))
+	cmd.AddCommand(sample.NewSampleCmd(f))
 
 	return cmd
 }

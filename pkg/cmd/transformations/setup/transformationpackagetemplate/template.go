@@ -42,31 +42,35 @@ var sampleTemplate string
 var helperTemplate string
 
 func Generate(tmpl PackageTemplate) error {
-	if err := tmpl.execute(packageTemplate, "package.json", pkg{Name: tmpl.TransformationName}); err != nil {
+	if err := execute(packageTemplate, "package.json", pkg{Name: tmpl.TransformationName}); err != nil {
 		return err
 	}
 
-	data, err := json.Marshal(tmpl.Sample)
-	if err != nil {
-		return fmt.Errorf("unable to marshal sample data: %w", err)
-	}
-
-	if err = tmpl.execute(sampleTemplate, "sample.js", sample{Sample: string(data)}); err != nil {
+	if err := GenerateSample(tmpl.Sample); err != nil {
 		return err
 	}
 
-	if err = tmpl.execute(codeTemplate, "index.js", code{Code: tmpl.Code}); err != nil {
+	if err := execute(codeTemplate, "index.js", code{Code: tmpl.Code}); err != nil {
 		return err
 	}
 
-	if err = tmpl.execute(helperTemplate, "helper.ts", helper{}); err != nil {
+	if err := execute(helperTemplate, "helper.ts", helper{}); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (t PackageTemplate) execute(templateCode string, outputFile string, data any) error {
+func GenerateSample(sampleMap map[string]any) error {
+	data, err := json.Marshal(sampleMap)
+	if err != nil {
+		return fmt.Errorf("unable to marshal sample data: %w", err)
+	}
+
+	return execute(sampleTemplate, "sample.js", sample{Sample: string(data)})
+}
+
+func execute(templateCode string, outputFile string, data any) error {
 	tmpl, err := template.New(outputFile).Funcs(template.FuncMap{
 		"hasPrefix": strings.HasPrefix,
 	}).Parse(templateCode)
