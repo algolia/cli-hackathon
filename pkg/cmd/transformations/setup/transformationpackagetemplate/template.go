@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"text/template"
 )
 
@@ -53,7 +54,9 @@ func Generate(tmpl PackageTemplate) error {
 }
 
 func (t PackageTemplate) execute(templateFile string, outputFile string, data any) error {
-	tmpl, err := template.New(templateFile).ParseFiles("pkg/cmd/transformations/setup/transformationpackagetemplate/" + templateFile)
+	tmpl, err := template.New(templateFile).Funcs(template.FuncMap{
+		"hasPrefix": strings.HasPrefix,
+	}).ParseFiles("pkg/cmd/transformations/setup/transformationpackagetemplate/" + templateFile)
 	if err != nil {
 		return fmt.Errorf("unable to setup template for '%s' generator: %w", templateFile, err)
 	}

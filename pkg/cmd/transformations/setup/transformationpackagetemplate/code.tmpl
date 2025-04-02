@@ -1,9 +1,15 @@
+{{if .Code -}}
+{{if hasPrefix .Code "/** @typedef"}}
+{{.Code}}
+{{else -}}
+/** @typedef {typeof import('./sample.js')} SourceRecord */
+/** @typedef {import('./helper.js').Helper} Helper */
+{{.Code}}
+{{end -}}
+{{else -}}
 /** @typedef {typeof import('./sample.js')} SourceRecord */
 /** @typedef {import('./helper.js').Helper} Helper */
 
-{{if .Code -}}
-{{.Code}}
-{{else -}}
 /**
  * This is the default javascript transformation function, you cannot rename it or change its signature.
  * This function will be called for each item in the dataset.

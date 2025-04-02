@@ -85,17 +85,6 @@ func runImportCmd(opts *ImportOptions) error {
 		return err
 	}
 
-	//cs := opts.IO.ColorScheme()
-	//if opts.IO.IsStdoutTTY() {
-	//	fmt.Fprintf(
-	//		opts.IO.Out,
-	//		"%s Successfully fetched %s \n%s\n",
-	//		cs.SuccessIcon(),
-	//		res.TransformationID,
-	//		res.Code,
-	//	)
-	//}
-
 	sourceID, err := sourcepicker.PickSource(client)
 	if err != nil {
 		return err
