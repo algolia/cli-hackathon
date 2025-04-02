@@ -5,6 +5,7 @@ import (
 	"net/url"
 
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/call"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/transport"
 
@@ -21,6 +22,7 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 	}
 	f.IOStreams = ioStreams(f)
 	f.SearchClient = searchClient(f, appVersion)
+	f.IngestionClient = ingestionClient(f, appVersion)
 	f.CrawlerClient = crawlerClient(f)
 
 	return f
@@ -29,6 +31,39 @@ func New(appVersion string, cfg config.IConfig) *cmdutil.Factory {
 func ioStreams(_ *cmdutil.Factory) *iostreams.IOStreams {
 	io := iostreams.System()
 	return io
+}
+
+func ingestionClient(f *cmdutil.Factory, appVersion string) func() (*ingestion.APIClient, error) {
+	return func() (*ingestion.APIClient, error) {
+		appID, err := f.Config.Profile().GetApplicationID()
+		if err != nil {
+			return nil, err
+		}
+		apiKey, err := f.Config.Profile().GetAPIKey()
+		if err != nil {
+			return nil, err
+		}
+
+		userAgent, err := getUserAgentInfo(appID, apiKey, appVersion)
+		if err != nil {
+			return nil, err
+		}
+		if userAgent == "" {
+			return nil, fmt.Errorf("user agent must not be empty")
+		}
+
+		clientConf := ingestion.IngestionConfiguration{
+			Configuration: transport.Configuration{
+				AppID:                           appID,
+				ApiKey:                          apiKey,
+				UserAgent:                       userAgent,
+				ExposeIntermediateNetworkErrors: true,
+				Hosts:                           []transport.StatefulHost{transport.NewStatefulHost("https", "staging-data.us.algolia.com", call.IsReadWrite)},
+			},
+		}
+
+		return ingestion.NewClientWithConfig(clientConf)
+	}
 }
 
 func searchClient(f *cmdutil.Factory, appVersion string) func() (*search.APIClient, error) {

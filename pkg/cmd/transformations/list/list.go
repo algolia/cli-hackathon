@@ -2,11 +2,10 @@ package list
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -21,7 +20,7 @@ type ListOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	IngestionClient func() (*search.APIClient, error)
+	IngestionClient func() (*ingestion.APIClient, error)
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -31,7 +30,7 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	opts := &ListOptions{
 		IO:              f.IOStreams,
 		Config:          f.Config,
-		IngestionClient: f.SearchClient,
+		IngestionClient: f.IngestionClient,
 		PrintFlags:      cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
@@ -64,7 +63,7 @@ func runListCmd(opts *ListOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching indices")
-	res, err := client.ListIndices(client.NewApiListIndicesRequest())
+	res, err := client.ListTransformations(client.NewApiListTransformationsRequest())
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -96,33 +95,25 @@ func runListCmd(opts *ListOptions) error {
 		table.EndRow()
 	}
 
-	for _, index := range res.Items {
-		var primary string
-		if index.Primary == nil {
-			primary = ""
-		} else {
-			primary = *index.Primary
-		}
-		updatedAt, err := parseTime(index.UpdatedAt)
+	for _, transfo := range res.Transformations {
+		updatedAt, err := parseTime(*transfo.UpdatedAt)
 		if err != nil {
-			return fmt.Errorf("can't parse %s into a time struct", index.UpdatedAt)
+			return fmt.Errorf("can't parse %s into a time struct", *transfo.UpdatedAt)
 		}
-		createdAt, err := parseTime(index.CreatedAt)
+		createdAt, err := parseTime(transfo.CreatedAt)
 		if err != nil {
-			return fmt.Errorf("can't parse %s into a time struct", index.CreatedAt)
+			return fmt.Errorf("can't parse %s into a time struct", transfo.CreatedAt)
 		}
-		// Prevent integer overflow
-		if index.DataSize < 0 {
-			index.DataSize = 0
+
+		desc := "None"
+		if transfo.Description != nil {
+			desc = *transfo.Description
 		}
-		table.AddField(index.Name, nil, nil)
-		table.AddField(humanize.Comma(int64(index.Entries)), nil, nil)
-		table.AddField(humanize.Bytes(uint64(index.DataSize)), nil, nil)
+
+		table.AddField(transfo.Name, nil, nil)
+		table.AddField(desc, nil, nil)
 		table.AddField(updatedAt, nil, nil)
 		table.AddField(createdAt, nil, nil)
-		table.AddField(strconv.Itoa(int(index.LastBuildTimeS))+"s", nil, nil)
-		table.AddField(primary, nil, nil)
-		table.AddField(fmt.Sprintf("%v", index.Replicas), nil, nil)
 		table.EndRow()
 	}
 	return table.Render()
