@@ -34,6 +34,7 @@ import (
 	"github.com/algolia/cli/pkg/cmd/search"
 	"github.com/algolia/cli/pkg/cmd/settings"
 	"github.com/algolia/cli/pkg/cmd/synonyms"
+	"github.com/algolia/cli/pkg/cmd/transformations"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/telemetry"
@@ -109,6 +110,9 @@ func NewRootCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd.AddCommand(dictionary.NewDictionaryCmd(f))
 	cmd.AddCommand(events.NewEventsCmd(f))
 	cmd.AddCommand(crawler.NewCrawlersCmd(f))
+	cmd.AddCommand(transformations.NewTransformationsCmd(f))
+
+	cmd.AddCommand()
 
 	return cmd
 }
