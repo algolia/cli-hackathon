@@ -8,12 +8,11 @@ import (
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	"github.com/spf13/cobra"
 
+	bubbleinput "github.com/algolia/cli/pkg/cmd/transformations/bubble/input"
 	"github.com/algolia/cli/pkg/cmd/transformations/setup/source_picker"
-	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformation_name"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/validators"
 )
 
 type NewOptions struct {
@@ -41,14 +40,15 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "new transformation-name",
 		Aliases: []string{"n"},
-		Args:    validators.ExactArgsWithMsg(1, "A transformation name is required"),
 		Short:   "New transformation",
 		Example: heredoc.Doc(`
 			# New transformation 
 			$ algolia transfo new transformation-name --source <uuid>
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			opts.TransformationName = args[0]
+			if len(args) > 0 {
+				opts.TransformationName = args[0]
+			}
 
 			return runNewCmd(opts)
 		},
@@ -72,7 +72,7 @@ func runNewCmd(opts *NewOptions) error {
 	}
 
 	if opts.TransformationName == "" {
-		opts.TransformationName, err = transformation_name.Prompt()
+		opts.TransformationName, err = bubbleinput.Prompt("What's your transformation name?")
 		if err != nil {
 			return err
 		}

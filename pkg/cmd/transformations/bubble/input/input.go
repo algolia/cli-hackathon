@@ -1,4 +1,4 @@
-package transformation_name
+package bubbleinput
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func Prompt() (string, error) {
-	m := initialModel()
+func Prompt(message string) (string, error) {
+	m := initialModel(message)
 
 	p := tea.NewProgram(&m)
 	if _, err := p.Run(); err != nil {
@@ -24,11 +24,12 @@ type (
 )
 
 type model struct {
+	message   string
 	textInput textinput.Model
 	err       error
 }
 
-func initialModel() model {
+func initialModel(message string) model {
 	ti := textinput.New()
 	ti.Placeholder = "Doing fancy stuff to search FAST"
 	ti.Focus()
@@ -36,6 +37,7 @@ func initialModel() model {
 	ti.Width = 20
 
 	return model{
+		message:   message,
 		textInput: ti,
 		err:       nil,
 	}
@@ -67,7 +69,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	return fmt.Sprintf(
-		"What's your transformation name?\n\n\n%s",
+		"%s\n\n\n%s",
+		m.message,
 		m.textInput.View(),
 	) + "\n"
 }
