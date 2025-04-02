@@ -105,13 +105,14 @@ func runNewCmd(opts *NewOptions) error {
 			return err
 		}
 
+		opts.IO.StopProgressIndicator()
+
 		if !resp.HasData() || len(resp.GetData()) == 0 {
 			return fmt.Errorf("unable to sample source %s: %s", opts.SourceID, resp.GetMessage())
 		}
 
 		opts.Sample = resp.GetData()[0]
 
-		opts.IO.StopProgressIndicator()
 	} else {
 		opts.IO.StartProgressIndicatorWithLabel("Reading sample from file")
 
@@ -140,7 +141,11 @@ func runNewCmd(opts *NewOptions) error {
 		return fmt.Errorf("unable to create transformation folder with name '%s': %w", opts.OutputDirectory, err)
 	}
 
-	if err := transformation_package_template.Generate(opts.OutputDirectory, opts.TransformationName); err != nil {
+	if err := transformation_package_template.Generate(transformation_package_template.PackageTemplate{
+		OutputDirectory:    opts.OutputDirectory,
+		TransformationName: opts.TransformationName,
+		Sample:             opts.Sample,
+	}); err != nil {
 		return err
 	}
 

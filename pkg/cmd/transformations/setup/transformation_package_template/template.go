@@ -1,14 +1,16 @@
 package transformation_package_template
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"text/template"
 )
 
-type pkgTemplate struct {
-	outputDirectory    string
-	transformationName string
+type PackageTemplate struct {
+	OutputDirectory    string
+	TransformationName string
+	Sample             map[string]any
 }
 
 type pkg struct {
@@ -17,35 +19,34 @@ type pkg struct {
 
 type code struct{}
 
-func Generate(outputDirectory, transformationName string) error {
-	tmpl := pkgTemplate{outputDirectory: outputDirectory, transformationName: transformationName}
-
-	if err := tmpl.pkg(); err != nil {
+func Generate(tmpl PackageTemplate) error {
+	if err := tmpl.execute("package.tmpl", "package.json", pkg{Name: tmpl.TransformationName}); err != nil {
 		return err
 	}
 
-	if err := tmpl.code(); err != nil {
+	if err := tmpl.execute("code.tmpl", "index.ts", code{}); err != nil {
 		return err
+	}
+
+	sample, err := json.Marshal(tmpl.Sample)
+	if err != nil {
+		return fmt.Errorf("unable to marshal sample data: %w", err)
+	}
+
+	if err := os.WriteFile(fmt.Sprintf("%s%c%s", tmpl.OutputDirectory, os.PathSeparator, "sample.json"), sample, 0o750); err != nil {
+		return fmt.Errorf("unable to write to 'sample.json' file: %w", err)
 	}
 
 	return nil
 }
 
-func (t pkgTemplate) pkg() error {
-	return t.execute("package.tmpl", "package.json", pkg{Name: t.transformationName})
-}
-
-func (t pkgTemplate) code() error {
-	return t.execute("code.tmpl", "index.js", code{})
-}
-
-func (t pkgTemplate) execute(templateFile string, outputFile string, data any) error {
+func (t PackageTemplate) execute(templateFile string, outputFile string, data any) error {
 	tmpl, err := template.New(templateFile).ParseFiles("pkg/cmd/transformations/setup/transformation_package_template/" + templateFile)
 	if err != nil {
 		return fmt.Errorf("unable to setup template for '%s' generator: %w", templateFile, err)
 	}
 
-	file, err := os.Create(fmt.Sprintf("%s%c%s", t.outputDirectory, os.PathSeparator, outputFile))
+	file, err := os.Create(fmt.Sprintf("%s%c%s", t.OutputDirectory, os.PathSeparator, outputFile))
 	if err != nil {
 		return fmt.Errorf("unable to open '%s' file: %w", outputFile, err)
 	}
