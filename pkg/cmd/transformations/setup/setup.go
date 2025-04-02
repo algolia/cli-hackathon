@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
@@ -22,6 +23,7 @@ type NewOptions struct {
 
 	IngestionClient func() (*ingestion.APIClient, error)
 
+	OutputDirectory    string
 	TransformationName string
 	SourceID           string
 	SampleFile         string
@@ -119,8 +121,16 @@ func runNewCmd(opts *NewOptions) error {
 		}
 	}
 
-	if err := os.Mkdir(opts.TransformationName, 0o750); err != nil {
-		return err
+	opts.OutputDirectory = fmt.Sprintf("output%c%s", os.PathSeparator, opts.TransformationName)
+
+	if _, err := os.Stat(opts.OutputDirectory); !os.IsNotExist(err) {
+		opts.OutputDirectory = fmt.Sprintf("%s-%d", opts.OutputDirectory, time.Now().Unix())
+
+		fmt.Fprintf(opts.IO.Out, "\nDirectory or file with name '%s' already exist, transformation will be saved in '%s'....\n", opts.TransformationName, opts.OutputDirectory)
+	}
+
+	if err := os.MkdirAll(opts.OutputDirectory, 0o750); err != nil {
+		return fmt.Errorf("unable to create transformation folder with name '%s': %w", opts.OutputDirectory, err)
 	}
 
 	return nil
