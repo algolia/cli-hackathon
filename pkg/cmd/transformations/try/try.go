@@ -1,4 +1,4 @@
-package list
+package try
 
 import (
 	"fmt"
@@ -16,7 +16,7 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
-type ListOptions struct {
+type TryOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
@@ -25,26 +25,25 @@ type ListOptions struct {
 	PrintFlags *cmdutil.PrintFlags
 }
 
-// NewListCmd creates and returns a list command for transformations
-func NewListCmd(f *cmdutil.Factory) *cobra.Command {
-	opts := &ListOptions{
+// NewTryCmd creates and returns a try command for transformations
+func NewTryCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := &TryOptions{
 		IO:              f.IOStreams,
 		Config:          f.Config,
 		IngestionClient: f.IngestionClient,
 		PrintFlags:      cmdutil.NewPrintFlags(),
 	}
-
 	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"l"},
-		Args:    validators.NoArgs(),
-		Short:   "List transformations",
+		Use:   "try",
+		Args:  validators.NoArgs(),
+		Short: "Try transformations",
 		Example: heredoc.Doc(`
-			# List transformations
-			$ algolia transfo list
+			# Try transformations
+			$ algolia transfo try
+			$ algolia transfo --local
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runListCmd(opts)
+			return runTryCmd(opts)
 		},
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
@@ -57,13 +56,14 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runListCmd(opts *ListOptions) error {
+func runTryCmd(opts *TryOptions) error {
 	client, err := opts.IngestionClient()
 	if err != nil {
 		return err
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel("Fetching transformations")
+	opts.IO.StartProgressIndicatorWithLabel("Trying transformation")
+
 	res, err := client.ListTransformations(client.NewApiListTransformationsRequest())
 	opts.IO.StopProgressIndicator()
 	if err != nil {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/algolia/cli/pkg/cmd/transformations/list"
 	"github.com/algolia/cli/pkg/cmd/transformations/setup"
+	"github.com/algolia/cli/pkg/cmd/transformations/try"
 	"github.com/algolia/cli/pkg/cmdutil"
 )
 
@@ -17,6 +18,7 @@ func NewTransformationsCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.AddCommand(list.NewListCmd(f))
+	cmd.AddCommand(try.NewTryCmd(f))
 	cmd.AddCommand(setup.NewSetupCmd(f))
 
 	return cmd
