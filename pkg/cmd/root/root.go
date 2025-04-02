@@ -152,7 +152,7 @@ func Execute() exitCode {
 				)
 				return authError
 			}
-			
+
 			if err := auth.CheckACLs(cmd, cmdFactory); err != nil {
 				fmt.Fprint(stderr, err)
 				return authError

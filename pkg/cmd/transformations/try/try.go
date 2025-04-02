@@ -106,7 +106,6 @@ func runTryCmd(opts *TryOptions) error {
 	}
 
 	return (&printers.JSONPrinter{}).Print(opts.IO, firstPayload)
-
 }
 
 // parseTime parses the string from the API response into a relative time string

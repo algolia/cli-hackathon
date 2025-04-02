@@ -2,13 +2,14 @@ package importTransfo
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
-	"os"
 
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -60,7 +61,6 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 
 func runImportCmd(opts *ImportOptions, args []string) error {
 	client, err := opts.IngestionClient()
-
 	if err != nil {
 		return err
 	}
