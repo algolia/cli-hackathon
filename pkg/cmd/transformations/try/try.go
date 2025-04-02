@@ -1,18 +1,20 @@
 package try
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
+	"github.com/algolia/cli/pkg/printers"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
-	"github.com/algolia/cli/pkg/printers"
 	"github.com/algolia/cli/pkg/validators"
 )
 
@@ -64,56 +66,47 @@ func runTryCmd(opts *TryOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Trying transformation")
 
-	res, err := client.ListTransformations(client.NewApiListTransformationsRequest())
+	transformation, err := os.ReadFile("src/transformation.js")
+	if err != nil {
+		return fmt.Errorf("failed to read transformation file: %w", err)
+	}
+
+	sampleRaw, err := os.ReadFile("sample.json")
+	if err != nil {
+		return fmt.Errorf("failed to read sample file: %w", err)
+	}
+
+	var sample map[string]any
+	if err = json.Unmarshal(sampleRaw, &sample); err != nil {
+		return fmt.Errorf("failed to unmarshal sample file, make sure it's a valid JSON object: %w", err)
+	}
+
+	res, body, err := client.TryTransformationWithHTTPInfo(client.NewApiTryTransformationRequest(ingestion.NewTransformationTry(string(transformation), sample)))
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
 	}
 
-	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
-		p, err := opts.PrintFlags.ToPrinter()
-		if err != nil {
-			return err
-		}
-		return p.Print(opts.IO, res)
+	var result struct {
+		Payloads []string                       `json:"payloads"`
+		Error    *ingestion.TransformationError `json:"error,omitempty"`
 	}
 
-	if err := opts.IO.StartPager(); err != nil {
-		fmt.Fprintf(opts.IO.ErrOut, "error starting pager: %v\n", err)
-	}
-	defer opts.IO.StopPager()
-
-	table := printers.NewTablePrinter(opts.IO)
-	if table.IsTTY() {
-		table.AddField("NAME", nil, nil)
-		table.AddField("DESCRIPTION", nil, nil)
-		table.AddField("UPDATED AT", nil, nil)
-		table.AddField("CREATED AT", nil, nil)
-		table.EndRow()
+	if err = json.Unmarshal(body, &result); err != nil {
+		return fmt.Errorf("failed to unmarshal response: %w", err)
 	}
 
-	for _, transfo := range res.Transformations {
-		updatedAt, err := parseTime(*transfo.UpdatedAt)
-		if err != nil {
-			return fmt.Errorf("can't parse %s into a time struct", *transfo.UpdatedAt)
-		}
-		createdAt, err := parseTime(transfo.CreatedAt)
-		if err != nil {
-			return fmt.Errorf("can't parse %s into a time struct", transfo.CreatedAt)
-		}
-
-		desc := "None"
-		if transfo.Description != nil {
-			desc = *transfo.Description
-		}
-
-		table.AddField(transfo.Name, nil, nil)
-		table.AddField(desc, nil, nil)
-		table.AddField(updatedAt, nil, nil)
-		table.AddField(createdAt, nil, nil)
-		table.EndRow()
+	if res.StatusCode != 200 {
+		return fmt.Errorf("failed to try transformation: %s", *result.Error.Message)
 	}
-	return table.Render()
+
+	var firstPayload map[string]any
+	if err = json.Unmarshal([]byte(result.Payloads[0]), &firstPayload); err != nil {
+		return fmt.Errorf("failed to unmarshal payload: %w", err)
+	}
+
+	return (&printers.JSONPrinter{}).Print(opts.IO, firstPayload)
+
 }
 
 // parseTime parses the string from the API response into a relative time string
