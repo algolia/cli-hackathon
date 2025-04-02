@@ -12,6 +12,7 @@ import (
 
 	bubbleinput "github.com/algolia/cli/pkg/cmd/transformations/bubble/input"
 	"github.com/algolia/cli/pkg/cmd/transformations/setup/source_picker"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformation_package_template"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -109,7 +110,11 @@ func runNewCmd(opts *NewOptions) error {
 		}
 
 		opts.Sample = resp.GetData()[0]
+
+		opts.IO.StopProgressIndicator()
 	} else {
+		opts.IO.StartProgressIndicatorWithLabel("Reading sample from file")
+
 		data, err := os.ReadFile(opts.SampleFile)
 		if err != nil {
 			return fmt.Errorf("unable to open file %s: %w", opts.SampleFile, err)
@@ -119,19 +124,27 @@ func runNewCmd(opts *NewOptions) error {
 		if err != nil {
 			return err
 		}
+
+		opts.IO.StopProgressIndicator()
 	}
 
 	opts.OutputDirectory = fmt.Sprintf("output%c%s", os.PathSeparator, opts.TransformationName)
 
 	if _, err := os.Stat(opts.OutputDirectory); !os.IsNotExist(err) {
 		opts.OutputDirectory = fmt.Sprintf("%s-%d", opts.OutputDirectory, time.Now().Unix())
-
-		fmt.Fprintf(opts.IO.Out, "\nDirectory or file with name '%s' already exist, transformation will be saved in '%s'....\n", opts.TransformationName, opts.OutputDirectory)
 	}
+
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Generating output package folder at path '%s'", opts.OutputDirectory))
 
 	if err := os.MkdirAll(opts.OutputDirectory, 0o750); err != nil {
 		return fmt.Errorf("unable to create transformation folder with name '%s': %w", opts.OutputDirectory, err)
 	}
+
+	if err := transformation_package_template.Generate(opts.OutputDirectory, opts.TransformationName); err != nil {
+		return err
+	}
+
+	opts.IO.StopProgressIndicator()
 
 	return nil
 }

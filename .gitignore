@@ -20,3 +20,6 @@ algolia
 
 # Environment variables
 *.env
+
+# Output of transformation generation
+output
