@@ -82,21 +82,31 @@ func runNewCmd(opts *NewOptions) error {
 		items := make([]list.Item, 0, len(resp.Sources))
 
 		for _, source := range resp.Sources {
-			items = append(items, item{title: source.GetName(), desc: string(source.GetType())})
+			items = append(items, item{title: fmt.Sprintf("%s: %s", source.GetType(), source.GetName()), uuid: source.GetSourceID()})
 		}
 
-		m := model{list: list.New(items, list.NewDefaultDelegate(), 0, 0)}
-		m.list.Title = "Your sources"
+		list := list.New(items, list.NewDefaultDelegate(), 20, 0)
+		list.Title = "Your sources"
+
+		m := model{list: list}
 
 		opts.IO.StopProgressIndicator()
 
-		p := tea.NewProgram(m, tea.WithAltScreen())
-
-		if _, err := p.Run(); err != nil {
+		if _, err := tea.NewProgram(&m).Run(); err != nil {
 			fmt.Println("Error running program:", err)
 			os.Exit(1)
 		}
+
+		opts.SourceID = m.choice
 	}
+
+	opts.IO.StartProgressIndicatorWithLabel("Sampling source")
+	resp, err := client.ValidateSource(client.NewApiListSourcesRequest().WithType([]ingestion.SourceType{ingestion.SOURCE_TYPE_JSON, ingestion.SOURCE_TYPE_CSV, ingestion.SOURCE_TYPE_DOCKER, ingestion.SOURCE_TYPE_BIGQUERY}).WithItemsPerPage(100))
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(opts.SourceID)
 
 	if opts.PrintFlags.OutputFlagSpecified() && opts.PrintFlags.OutputFormat != nil {
 		p, err := opts.PrintFlags.ToPrinter()
@@ -159,25 +169,34 @@ func runNewCmd(opts *NewOptions) error {
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 type item struct {
-	title, desc string
+	title, uuid string
 }
 
 func (i item) Title() string       { return i.title }
-func (i item) Description() string { return i.desc }
+func (i item) Description() string { return i.uuid }
 func (i item) FilterValue() string { return i.title }
 
 type model struct {
-	list list.Model
+	list   list.Model
+	choice string
 }
 
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if msg.String() == "ctrl+c" {
+		switch keypress := msg.String(); keypress {
+		case "q", "ctrl+c":
+			return m, tea.Quit
+
+		case "enter":
+			i, ok := m.list.SelectedItem().(item)
+			if ok {
+				m.choice = string(i.uuid)
+			}
 			return m, tea.Quit
 		}
 	case tea.WindowSizeMsg:
@@ -190,6 +209,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	return docStyle.Render(m.list.View())
 }
