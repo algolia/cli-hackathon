@@ -1,11 +1,12 @@
-package list
+package sample
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -16,34 +17,34 @@ import (
 	"github.com/algolia/cli/pkg/validators"
 )
 
-type ListOptions struct {
+type SampleOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	IngestionClient func() (*ingestion.APIClient, error)
+	IngestionClient func() (*search.APIClient, error)
 
 	PrintFlags *cmdutil.PrintFlags
 }
 
-// NewListCmd creates and returns a list command for indices
-func NewListCmd(f *cmdutil.Factory) *cobra.Command {
-	opts := &ListOptions{
+// NewSampleCmd runs a sample of the given sourceID
+func NewSampleCmd(f *cmdutil.Factory) *cobra.Command {
+	opts := &SampleOptions{
 		IO:              f.IOStreams,
 		Config:          f.Config,
 		IngestionClient: f.IngestionClient,
 		PrintFlags:      cmdutil.NewPrintFlags(),
 	}
 	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"l"},
+		Use:     "sample",
+		Aliases: []string{"s"},
 		Args:    validators.NoArgs(),
-		Short:   "List indices",
+		Short:   "Sample a source",
 		Example: heredoc.Doc(`
-			# List indices
-			$ algolia indices list
+			# Sample a source
+			$ algolia transfo sample
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runListCmd(opts)
+			return runSampleCmd(opts)
 		},
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
@@ -56,14 +57,14 @@ func NewListCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runListCmd(opts *ListOptions) error {
+func runSampleCmd(opts *SampleOptions) error {
 	client, err := opts.IngestionClient()
 	if err != nil {
 		return err
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching indices")
-	res, err := client.ListTransformations(client.NewApiListTransformationsRequest())
+	res, err := client.SampleIndices(client.NewApiSampleIndicesRequest())
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
@@ -95,25 +96,33 @@ func runListCmd(opts *ListOptions) error {
 		table.EndRow()
 	}
 
-	for _, transfo := range res.Transformations {
-		updatedAt, err := parseTime(*transfo.UpdatedAt)
+	for _, index := range res.Items {
+		var primary string
+		if index.Primary == nil {
+			primary = ""
+		} else {
+			primary = *index.Primary
+		}
+		updatedAt, err := parseTime(index.UpdatedAt)
 		if err != nil {
-			return fmt.Errorf("can't parse %s into a time struct", *transfo.UpdatedAt)
+			return fmt.Errorf("can't parse %s into a time struct", index.UpdatedAt)
 		}
-		createdAt, err := parseTime(transfo.CreatedAt)
+		createdAt, err := parseTime(index.CreatedAt)
 		if err != nil {
-			return fmt.Errorf("can't parse %s into a time struct", transfo.CreatedAt)
+			return fmt.Errorf("can't parse %s into a time struct", index.CreatedAt)
 		}
-
-		desc := "None"
-		if transfo.Description != nil {
-			desc = *transfo.Description
+		// Prevent integer overflow
+		if index.DataSize < 0 {
+			index.DataSize = 0
 		}
-
-		table.AddField(transfo.Name, nil, nil)
-		table.AddField(desc, nil, nil)
+		table.AddField(index.Name, nil, nil)
+		table.AddField(humanize.Comma(int64(index.Entries)), nil, nil)
+		table.AddField(humanize.Bytes(uint64(index.DataSize)), nil, nil)
 		table.AddField(updatedAt, nil, nil)
 		table.AddField(createdAt, nil, nil)
+		table.AddField(strconv.Itoa(int(index.LastBuildTimeS))+"s", nil, nil)
+		table.AddField(primary, nil, nil)
+		table.AddField(fmt.Sprintf("%v", index.Replicas), nil, nil)
 		table.EndRow()
 	}
 	return table.Render()
