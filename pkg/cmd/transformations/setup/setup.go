@@ -88,14 +88,10 @@ func runNewCmd(opts *NewOptions) error {
 
 	if opts.SampleFile == "" {
 		if opts.SourceID == "" {
-			opts.IO.StartProgressIndicatorWithLabel("Listing sources")
-
 			opts.SourceID, err = source_picker.PickSource(client)
 			if err != nil {
 				return err
 			}
-
-			opts.IO.StopProgressIndicator()
 		}
 
 		opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Sampling source %s", opts.SourceID))
