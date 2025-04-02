@@ -11,7 +11,7 @@ import (
 
 	bubbleinput "github.com/algolia/cli/pkg/cmd/transformations/bubble/input"
 	"github.com/algolia/cli/pkg/cmd/transformations/setup/source_picker"
-	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformation_package_template"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformationpackagetemplate"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -123,7 +123,7 @@ func runNewCmd(opts *NewOptions) error {
 		return fmt.Errorf("unable to create transformation folder with name '%s': %w", opts.OutputDirectory, err)
 	}
 
-	if err := transformation_package_template.Generate(transformation_package_template.PackageTemplate{
+	if err := transformationpackagetemplate.Generate(transformationpackagetemplate.PackageTemplate{
 		OutputDirectory:    opts.OutputDirectory,
 		TransformationName: opts.TransformationName,
 		Sample:             opts.Sample,

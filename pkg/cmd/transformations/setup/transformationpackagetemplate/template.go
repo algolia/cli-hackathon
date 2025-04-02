@@ -1,4 +1,4 @@
-package transformation_package_template
+package transformationpackagetemplate
 
 import (
 	"encoding/json"
