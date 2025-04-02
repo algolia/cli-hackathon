@@ -64,7 +64,7 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			i, ok := m.list.SelectedItem().(Item)
 			if ok {
-				m.Choice = string(i.UUID)
+				m.Choice = i.UUID
 			}
 			return m, tea.Quit
 		}
