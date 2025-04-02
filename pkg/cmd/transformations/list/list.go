@@ -85,13 +85,9 @@ func runListCmd(opts *ListOptions) error {
 	table := printers.NewTablePrinter(opts.IO)
 	if table.IsTTY() {
 		table.AddField("NAME", nil, nil)
-		table.AddField("ENTRIES", nil, nil)
-		table.AddField("SIZE", nil, nil)
+		table.AddField("DESCRIPTION", nil, nil)
 		table.AddField("UPDATED AT", nil, nil)
 		table.AddField("CREATED AT", nil, nil)
-		table.AddField("LAST BUILD DURATION", nil, nil)
-		table.AddField("PRIMARY", nil, nil)
-		table.AddField("REPLICAS", nil, nil)
 		table.EndRow()
 	}
 
