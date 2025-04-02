@@ -16,8 +16,9 @@ type PackageTemplate struct {
 }
 
 type pkg struct {
-	Name string
-	ID   string
+	Name     string
+	ID       string
+	GlobalID string
 }
 
 type sample struct {
@@ -62,8 +63,8 @@ func Generate(tmpl PackageTemplate) error {
 	return nil
 }
 
-func RefreshPackageJson(transformationName, transformationID string) error {
-	return execute(packageTemplate, "package.json", pkg{Name: transformationName, ID: transformationID})
+func RefreshPackageJson(transformationName, transformationID string, globalTransformationID string) error {
+	return execute(packageTemplate, "package.json", pkg{Name: transformationName, ID: transformationID, GlobalID: globalTransformationID})
 }
 
 func GenerateSample(sampleMap map[string]any) error {

@@ -1,6 +1,7 @@
 package save
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -70,17 +71,23 @@ func runSaveCmd(opts *SaveOptions) error {
 		return err
 	}
 
+	dir := "./"
+
 	if opts.TransformationPath == "" {
-		opts.TransformationPath = bubblefile.NewBubbleFile()
+		// check if there is a index.js already
+		if _, err = os.Stat("index.js"); os.IsNotExist(err) {
+			opts.TransformationPath = bubblefile.NewBubbleFile()
+			dir = path.Dir(opts.TransformationPath)
+		} else {
+			opts.TransformationPath = "index.js"
+		}
 	}
 
 	if path.Ext(opts.TransformationPath) != ".js" {
 		return fmt.Errorf("please provide a valid javascript file, '%s' given", opts.TransformationPath)
 	}
 
-	dir := path.Dir(opts.TransformationPath)
-
-	code, err := os.ReadFile(path.Join(dir, "index.js"))
+	code, err := os.ReadFile("index.js")
 	if err != nil {
 		return fmt.Errorf("unable to find 'index.js' file at path '%s': %w", dir, err)
 	}
@@ -99,6 +106,8 @@ func runSaveCmd(opts *SaveOptions) error {
 		return fmt.Errorf("unable to read 'package.json' at path '%s': %w", dir, err)
 	}
 
+	basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte("hackathon:hackathon"))
+
 	// Create a new transfo
 	if packageJson.TransformationID == "" {
 		opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Saving transformation at path '%s'", opts.TransformationPath))
@@ -112,7 +121,19 @@ func runSaveCmd(opts *SaveOptions) error {
 			return err
 		}
 
-		transformationpackagetemplate.RefreshPackageJson(packageJson.Name, resp.GetTransformationID())
+		respGlobal, err := client.CreateTransformation(
+			client.NewApiCreateTransformationRequest(
+				ingestion.NewTransformationCreate(string(code), packageJson.Name).
+					SetDescription("Transformation created from the Algolia CLI tool"),
+			), ingestion.WithHeaderParam("Authorization", basicAuth))
+		if err != nil {
+			return err
+		}
+
+		err = transformationpackagetemplate.RefreshPackageJson(packageJson.Name, resp.GetTransformationID(), respGlobal.GetTransformationID())
+		if err != nil {
+			return fmt.Errorf("unable to refresh package.json: %w", err)
+		}
 
 		opts.IO.StopProgressIndicator()
 
@@ -121,7 +142,7 @@ func runSaveCmd(opts *SaveOptions) error {
 
 	// Update an existing transfo
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Updating transformation at path '%s'", opts.TransformationPath))
-	_, err = client.UpdateTransformation(
+	resp, err := client.UpdateTransformation(
 		client.NewApiUpdateTransformationRequest(
 			packageJson.TransformationID,
 			ingestion.NewTransformationCreate(string(code), packageJson.Name).
@@ -129,6 +150,21 @@ func runSaveCmd(opts *SaveOptions) error {
 		))
 	if err != nil {
 		return err
+	}
+
+	// and create a new global one, since they are immutable
+	respGlobal, err := client.CreateTransformation(
+		client.NewApiCreateTransformationRequest(
+			ingestion.NewTransformationCreate(string(code), packageJson.Name).
+				SetDescription("Transformation created from the Algolia CLI tool"),
+		), ingestion.WithHeaderParam("Authorization", basicAuth))
+	if err != nil {
+		return err
+	}
+
+	err = transformationpackagetemplate.RefreshPackageJson(packageJson.Name, resp.GetTransformationID(), respGlobal.GetTransformationID())
+	if err != nil {
+		return fmt.Errorf("unable to refresh package.json: %w", err)
 	}
 
 	opts.IO.StopProgressIndicator()
