@@ -2,21 +2,29 @@ package bubbleinput
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
 func Prompt(message string) (string, error) {
-	m := initialModel(message)
+	ti := textinput.New()
+	ti.Placeholder = "..."
+	ti.Focus()
+	ti.CharLimit = 156
+	ti.Width = 20
 
-	p := tea.NewProgram(&m)
-	if _, err := p.Run(); err != nil {
-		log.Fatal(err)
+	m := model{
+		message:   message,
+		textInput: ti,
+		err:       nil,
 	}
 
-	return m.textInput.CurrentSuggestion(), nil
+	if _, err := tea.NewProgram(&m).Run(); err != nil {
+		return "", err
+	}
+
+	return m.textInput.Value(), nil
 }
 
 type (
@@ -29,21 +37,7 @@ type model struct {
 	err       error
 }
 
-func initialModel(message string) model {
-	ti := textinput.New()
-	ti.Placeholder = "Doing fancy stuff to search FAST"
-	ti.Focus()
-	ti.CharLimit = 156
-	ti.Width = 20
-
-	return model{
-		message:   message,
-		textInput: ti,
-		err:       nil,
-	}
-}
-
-func (m model) Init() tea.Cmd {
+func (m *model) Init() tea.Cmd {
 	return textinput.Blink
 }
 
@@ -64,10 +58,11 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.textInput, cmd = m.textInput.Update(msg)
+
 	return m, cmd
 }
 
-func (m model) View() string {
+func (m *model) View() string {
 	return fmt.Sprintf(
 		"%s\n\n\n%s",
 		m.message,

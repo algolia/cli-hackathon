@@ -84,6 +84,10 @@ func runNewCmd(opts *NewOptions) error {
 		if err != nil {
 			return err
 		}
+
+		if opts.TransformationName == "" {
+			panic("mdr")
+		}
 	}
 
 	if opts.SampleFile == "" {
