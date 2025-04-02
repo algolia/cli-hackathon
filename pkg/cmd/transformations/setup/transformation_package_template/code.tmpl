@@ -1,7 +1,4 @@
-import { Helper } from "./helper.js";
-import Sample from "./sample.json" assert {type: "json"};
-
-type SourceRecord = typeof Sample;
+/** @typdef {typeof import('./sample.js')} SourceRecord */
 
 /**
  * This is the default javascript transformation function, you cannot rename it or change its signature.
@@ -10,7 +7,7 @@ type SourceRecord = typeof Sample;
  * @param {Helper} helper - Use it to reference Secrets and get Metadata.
  * @returns {SourceRecord|Array<SourceRecord>} - Return a record or an array of records.
  */
-async function transform(record: SourceRecord, helper: Helper) {
+async function transform(record, helper) {
 
     // If you want to exclude a record, you can just return undefined.
     // If you want to return multiple records, you can return an array of records.

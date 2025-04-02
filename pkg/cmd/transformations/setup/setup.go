@@ -2,9 +2,9 @@ package setup
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
@@ -132,7 +132,7 @@ func runNewCmd(opts *NewOptions) error {
 	opts.OutputDirectory = fmt.Sprintf("output%c%s", os.PathSeparator, opts.TransformationName)
 
 	if _, err := os.Stat(opts.OutputDirectory); !os.IsNotExist(err) {
-		opts.OutputDirectory = fmt.Sprintf("%s-%d", opts.OutputDirectory, time.Now().Unix())
+		return errors.New("something already present at path '%s', please clean the directory or change the name")
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Generating output package folder at path '%s'", opts.OutputDirectory))

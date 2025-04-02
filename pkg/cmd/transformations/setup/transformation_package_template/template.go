@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"reflect"
-	"strings"
 	"text/template"
 )
 
@@ -19,8 +17,8 @@ type pkg struct {
 	Name string
 }
 
-type code struct {
-	Typedef string
+type sample struct {
+	Sample string
 }
 
 type helper struct{}
@@ -30,29 +28,21 @@ func Generate(tmpl PackageTemplate) error {
 		return err
 	}
 
-	if err := tmpl.execute("code.tmpl", "index.ts", code{Typedef: tmpl.generateTypedefFromSample()}); err != nil {
+	data, err := json.Marshal(tmpl.Sample)
+	if err != nil {
+		return fmt.Errorf("unable to marshal sample data: %w", err)
+	}
+
+	if err := tmpl.execute("sample.tmpl", "sample.js", sample{Sample: string(data)}); err != nil {
+		return err
+	}
+
+	if err := tmpl.execute("code.tmpl", "index.js", map[string]any{}); err != nil {
 		return err
 	}
 
 	if err := tmpl.execute("helper.tmpl", "helper.ts", helper{}); err != nil {
 		return err
-	}
-
-	if err := tmpl.execute("tsconfig.tmpl", "tsconfig.json", helper{}); err != nil {
-		return err
-	}
-
-	if err := tmpl.execute("code.tmpl", "index.ts", code{}); err != nil {
-		return err
-	}
-
-	sample, err := json.Marshal(tmpl.Sample)
-	if err != nil {
-		return fmt.Errorf("unable to marshal sample data: %w", err)
-	}
-
-	if err := os.WriteFile(fmt.Sprintf("%s%c%s", tmpl.OutputDirectory, os.PathSeparator, "sample.json"), sample, 0o750); err != nil {
-		return fmt.Errorf("unable to write to 'sample.json' file: %w", err)
 	}
 
 	return nil
