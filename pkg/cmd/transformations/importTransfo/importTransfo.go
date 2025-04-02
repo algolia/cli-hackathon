@@ -2,13 +2,13 @@ package importTransfo
 
 import (
 	"fmt"
-	"github.com/algolia/cli/pkg/cmd/transformations/setup/source_picker"
-	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformation_package_template"
 	"os"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	bubblelist "github.com/algolia/cli/pkg/cmd/transformations/bubble/list"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/sourcepicker"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformationpackagetemplate"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -96,7 +96,7 @@ func runImportCmd(opts *ImportOptions, args []string) error {
 	//	)
 	//}
 
-	sourceID, err := source_picker.PickSource(client)
+	sourceID, err := sourcepicker.PickSource(client)
 	if err != nil {
 		return err
 	}
@@ -116,7 +116,7 @@ func runImportCmd(opts *ImportOptions, args []string) error {
 		return fmt.Errorf("unable to create transformation folder with name '%s': %w", outputDirectory, err)
 	}
 
-	if err := transformation_package_template.Generate(transformation_package_template.PackageTemplate{
+	if err := transformationpackagetemplate.Generate(transformationpackagetemplate.PackageTemplate{
 		OutputDirectory:    outputDirectory,
 		TransformationName: res.Name,
 		Sample:             resp.GetData()[0],
