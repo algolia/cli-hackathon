@@ -109,10 +109,9 @@ func runNewCmd(opts *NewOptions) error {
 		}
 
 		opts.Sample = resp.GetData()[0]
-
 	}
 
-	opts.OutputDirectory = fmt.Sprintf("output%c%s", os.PathSeparator, opts.TransformationName)
+	opts.OutputDirectory = fmt.Sprintf("%c%s", os.PathSeparator, opts.TransformationName)
 
 	if _, err := os.Stat(opts.OutputDirectory); !os.IsNotExist(err) {
 		return fmt.Errorf("something already present at path '%s', please clean the directory or change the name", opts.OutputDirectory)
