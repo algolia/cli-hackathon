@@ -4,8 +4,8 @@
  * @property getMetadata - Get your transformation metadata.
  */
 export interface Helper {
-secrets: Secrets;
-getMetadata: () => Metadata;
+    secrets: Secrets;
+    getMetadata: () => Metadata;
 }
 
 /**
@@ -15,20 +15,20 @@ getMetadata: () => Metadata;
  * @property indexName - The indexName of the task.
  */
 interface Metadata {
-appID: string;
-taskID: string;
-indexName: string;
-actionType: ActionType;
+    appID: string;
+    taskID: string;
+    indexName: string;
+    actionType: ActionType;
 }
 
 type ActionType = 'addObject' | 'updateObject' | 'partialUpdateObject' | 'partialUpdateObjectNoCreate' | 'deleteObject';
 
 interface Secrets {
-get(name: AvailableSecret): string;
+    get(name: AvailableSecret): string;
 }
 
 interface Secrets {
-get(name: AvailableSecret): string;
+    get(name: AvailableSecret): string;
 }
 
 type AvailableSecret = 'test'
