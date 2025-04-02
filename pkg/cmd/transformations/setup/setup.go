@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -23,6 +24,7 @@ type NewOptions struct {
 
 	TransformationName string
 	SourceID           string
+	SampleFile         string
 	Sample             map[string]any
 
 	PrintFlags *cmdutil.PrintFlags
@@ -43,7 +45,9 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 		Short:   "New transformation",
 		Example: heredoc.Doc(`
 			# New transformation 
-			$ algolia transfo new transformation-name --source <uuid>
+			$ algolia transfo new <transformation-name>
+			$ algolia transfo new <transformation-name> --source <uuid>
+			$ algolia transfo new <transformation-name> --source <uuid> --file <path-to-file.json>
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -58,7 +62,8 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVarP(&opts.SourceID, "source", "s", "", "The SourceID (UUID) to fetch sample from, when omitted, your list of source will be prompted")
+	cmd.Flags().StringVarP(&opts.SourceID, "source", "s", "", "The SourceID (UUID) to fetch sample from, when omitted, your list of source will be prompted.")
+	cmd.Flags().StringVarP(&opts.SampleFile, "file", "f", "", "Path to the file containing a sample JSON object to run your transformation against.")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -78,29 +83,41 @@ func runNewCmd(opts *NewOptions) error {
 		}
 	}
 
-	if opts.SourceID == "" {
-		opts.IO.StartProgressIndicatorWithLabel("Listing sources")
+	if opts.SampleFile == "" {
+		if opts.SourceID == "" {
+			opts.IO.StartProgressIndicatorWithLabel("Listing sources")
 
-		opts.SourceID, err = source_picker.PickSource(client)
+			opts.SourceID, err = source_picker.PickSource(client)
+			if err != nil {
+				return err
+			}
+
+			opts.IO.StopProgressIndicator()
+		}
+
+		opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Sampling source %s", opts.SourceID))
+
+		resp, err := client.ValidateSourceBeforeUpdate(client.NewApiValidateSourceBeforeUpdateRequest(opts.SourceID, ingestion.NewEmptySourceUpdate()))
 		if err != nil {
 			return err
 		}
 
-		opts.IO.StopProgressIndicator()
+		if !resp.HasData() || len(resp.GetData()) == 0 {
+			return fmt.Errorf("unable to sample source %s: %s", opts.SourceID, resp.GetMessage())
+		}
+
+		opts.Sample = resp.GetData()[0]
+	} else {
+		data, err := os.ReadFile(opts.SampleFile)
+		if err != nil {
+			return fmt.Errorf("unable to open file %s: %w", opts.SampleFile, err)
+		}
+
+		err = json.Unmarshal(data, &opts.Sample)
+		if err != nil {
+			return err
+		}
 	}
-
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Sampling source %s", opts.SourceID))
-
-	resp, err := client.ValidateSourceBeforeUpdate(client.NewApiValidateSourceBeforeUpdateRequest(opts.SourceID, ingestion.NewEmptySourceUpdate()))
-	if err != nil {
-		return err
-	}
-
-	if !resp.HasData() || len(resp.GetData()) == 0 {
-		return fmt.Errorf("unable to sample source %s: %s", opts.SourceID, resp.GetMessage())
-	}
-
-	opts.Sample = resp.GetData()[0]
 
 	if err := os.Mkdir(opts.TransformationName, 0o750); err != nil {
 		return err
