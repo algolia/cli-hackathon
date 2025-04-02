@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 
 	bubbleinput "github.com/algolia/cli/pkg/cmd/transformations/bubble/input"
-	"github.com/algolia/cli/pkg/cmd/transformations/setup/source_picker"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/sourcepicker"
 	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformationpackagetemplate"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
@@ -89,7 +89,7 @@ func runNewCmd(opts *NewOptions) error {
 
 	if opts.SampleFile == "" {
 		if opts.SourceID == "" {
-			opts.SourceID, err = source_picker.PickSource(client)
+			opts.SourceID, err = sourcepicker.PickSource(client)
 			if err != nil {
 				return err
 			}
