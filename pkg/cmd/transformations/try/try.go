@@ -1,6 +1,7 @@
 package try
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -66,18 +67,18 @@ func runTryCmd(opts *TryOptions) error {
 
 	opts.IO.StartProgressIndicatorWithLabel("Trying transformation")
 
-	transformation, err := os.ReadFile("src/transformation.js")
+	transformation, err := os.ReadFile("index.js")
 	if err != nil {
 		return fmt.Errorf("failed to read transformation file: %w", err)
 	}
 
-	sampleRaw, err := os.ReadFile("sample.json")
+	sampleRaw, err := os.ReadFile("sample.js")
 	if err != nil {
 		return fmt.Errorf("failed to read sample file: %w", err)
 	}
 
 	var sample map[string]any
-	if err = json.Unmarshal(sampleRaw, &sample); err != nil {
+	if err = json.Unmarshal(bytes.ReplaceAll(sampleRaw, []byte("module.exports = "), []byte("")), &sample); err != nil {
 		return fmt.Errorf("failed to unmarshal sample file, make sure it's a valid JSON object: %w", err)
 	}
 

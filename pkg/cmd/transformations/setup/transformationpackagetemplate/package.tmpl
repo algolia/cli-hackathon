@@ -1,10 +1,13 @@
 {
   "name": "{{ .Name }}",
+  "transformationID": "{{ .ID }}",
+  "globalTransformationID": "{{ .GlobalID }}",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsc && node --env-file=../../.env dist/index.js"
+    "start": "tsc && node --env-file=../../.env dist/index.js",
+    "try": "algolia transformations try"
   },
   "dependencies": {},
   "devDependencies": {

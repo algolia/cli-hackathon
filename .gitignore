@@ -22,4 +22,7 @@ algolia
 *.env
 
 # Output of transformation generation
-output
+helper.ts
+index.js
+package.json
+sample.js

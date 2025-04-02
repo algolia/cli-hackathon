@@ -2,19 +2,20 @@ package importTransfo
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	bubblelist "github.com/algolia/cli/pkg/cmd/transformations/bubble/list"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
-
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/sourcepicker"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformationpackagetemplate"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
+	"os"
+	"time"
 )
 
 type ImportOptions struct {
@@ -46,7 +47,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia transformations import
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runImportCmd(opts, args)
+			return runImportCmd(opts)
 		},
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
@@ -59,21 +60,17 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runImportCmd(opts *ImportOptions, args []string) error {
+func runImportCmd(opts *ImportOptions) error {
 	client, err := opts.IngestionClient()
 	if err != nil {
 		return err
 	}
 
 	if opts.TransformationID == "" {
-		opts.IO.StartProgressIndicatorWithLabel("Listing transformations")
-
 		opts.TransformationID, err = PickTransformation(client)
 		if err != nil {
 			return err
 		}
-
-		opts.IO.StopProgressIndicator()
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching transformation")
@@ -83,15 +80,32 @@ func runImportCmd(opts *ImportOptions, args []string) error {
 		return err
 	}
 
-	cs := opts.IO.ColorScheme()
-	if opts.IO.IsStdoutTTY() {
-		fmt.Fprintf(
-			opts.IO.Out,
-			"%s Successfully fetched %s \n%s\n",
-			cs.SuccessIcon(),
-			res.TransformationID,
-			res.Code,
-		)
+	sourceID, err := sourcepicker.PickSource(client)
+	if err != nil {
+		return err
+	}
+
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Sampling source %s", sourceID))
+
+	resp, err := client.ValidateSourceBeforeUpdate(client.NewApiValidateSourceBeforeUpdateRequest(sourceID, ingestion.NewEmptySourceUpdate()))
+	if err != nil {
+		return err
+	}
+
+	outputDirectory := fmt.Sprintf("output%c%s", os.PathSeparator, res.Name)
+
+	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Generating output package folder at path '%s'", outputDirectory))
+
+	if err = os.MkdirAll(outputDirectory, 0o750); err != nil {
+		return fmt.Errorf("unable to create transformation folder with name '%s': %w", outputDirectory, err)
+	}
+
+	if err = transformationpackagetemplate.Generate(transformationpackagetemplate.PackageTemplate{
+		TransformationName: res.Name,
+		Sample:             resp.GetData()[0],
+		Code:               &res.Code,
+	}); err != nil {
+		return err
 	}
 
 	return nil
@@ -106,7 +120,13 @@ func PickTransformation(client *ingestion.APIClient) (string, error) {
 	items := make([]list.Item, 0, len(resp.Transformations))
 
 	for _, transformation := range resp.Transformations {
-		items = append(items, bubblelist.Item{Name: transformation.GetName(), UUID: transformation.GetTransformationID()})
+		parse, _ := time.Parse(time.RFC3339, *transformation.UpdatedAt)
+		items = append(items, bubblelist.Item{Name: fmt.Sprintf("%s (%s) - %s", transformation.GetName(), func() string {
+			if transformation.Description != nil {
+				return *transformation.Description
+			}
+			return "No description"
+		}(), parse.String()), UUID: transformation.GetTransformationID()})
 	}
 
 	list := bubblelist.NewBubbleList("transformations", items)
