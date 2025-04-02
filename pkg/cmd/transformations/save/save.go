@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 
 	bubblefile "github.com/algolia/cli/pkg/cmd/transformations/bubble/file"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformationpackagetemplate"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -89,7 +90,7 @@ func runSaveCmd(opts *SaveOptions) error {
 		return fmt.Errorf("unable to find 'package.json' file at path '%s': %w", dir, err)
 	}
 
-	var packageJson map[string]any
+	var packageJson struct{ Name string }
 
 	if err := json.Unmarshal(pkg, &packageJson); err != nil {
 		return fmt.Errorf("unable to read 'package.json' at path '%s': %w", dir, err)
@@ -101,25 +102,14 @@ func runSaveCmd(opts *SaveOptions) error {
 		client.NewApiCreateTransformationRequest(
 			ingestion.NewEmptyTransformationCreate().
 				SetCode(string(code)).
-				SetName(packageJson["name"].(string)).
+				SetName(packageJson.Name).
 				SetDescription("Transformation created from the Algolia CLI tool"),
 		))
 	if err != nil {
 		return err
 	}
 
-	packageJson["transformationID"] = resp.GetTransformationID()
-
-	pkg, err = json.MarshalIndent(packageJson, "", "  ")
-	if err != nil {
-		return fmt.Errorf("unable to indent 'package.json' content: %w", err)
-	}
-
-	fmt.Println(string(pkg))
-
-	if err := os.WriteFile(path.Join(dir, "package.json"), pkg, 0o750); err != nil {
-		return fmt.Errorf("unable to write 'package.json' at path '%s': %w", dir, err)
-	}
+	transformationpackagetemplate.RefreshPackageJson(packageJson.Name, resp.GetTransformationID())
 
 	opts.IO.StopProgressIndicator()
 
