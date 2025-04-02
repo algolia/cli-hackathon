@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/MakeNowJust/heredoc"
-	"github.com/algolia/algoliasearch-client-go/v4/algolia/search"
+	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
@@ -21,7 +21,7 @@ type SampleOptions struct {
 	Config config.IConfig
 	IO     *iostreams.IOStreams
 
-	IngestionClient func() (*search.APIClient, error)
+	IngestionClient func() (*ingestion.APIClient, error)
 
 	PrintFlags *cmdutil.PrintFlags
 }
@@ -37,7 +37,7 @@ func NewSampleCmd(f *cmdutil.Factory) *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "sample",
 		Aliases: []string{"s"},
-		Args:    validators.NoArgs(),
+		Args:    validators.ExactArgs(1),
 		Short:   "Sample a source",
 		Example: heredoc.Doc(`
 			# Sample a source
@@ -63,8 +63,10 @@ func runSampleCmd(opts *SampleOptions) error {
 		return err
 	}
 
+	// TODO: if sourceID is given, sample the source, otherwise provide a list of sources
+
 	opts.IO.StartProgressIndicatorWithLabel("Fetching indices")
-	res, err := client.SampleIndices(client.NewApiSampleIndicesRequest())
+	res, err := client.ListSources()
 	opts.IO.StopProgressIndicator()
 	if err != nil {
 		return err
