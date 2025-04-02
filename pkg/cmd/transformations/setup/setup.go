@@ -3,6 +3,7 @@ package setup
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
@@ -76,15 +77,15 @@ func runNewCmd(opts *NewOptions) error {
 	}
 
 	if opts.TransformationName == "" {
-		opts.TransformationName, err = bubbleinput.Prompt("What's your transformation name?")
-		if err != nil {
-			return err
-		}
-
-		if opts.TransformationName == "" {
-			panic("mdr")
+		for len(opts.TransformationName) == 0 {
+			opts.TransformationName, err = bubbleinput.Prompt("What's your transformation name?")
+			if err != nil {
+				return err
+			}
 		}
 	}
+
+	opts.TransformationName = strings.ReplaceAll(opts.TransformationName, " ", "_")
 
 	if opts.SampleFile == "" {
 		if opts.SourceID == "" {
