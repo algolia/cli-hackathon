@@ -101,10 +101,6 @@ func runNewCmd(opts *NewOptions) error {
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Sampling source")
-	resp, err := client.ValidateSource(client.NewApiListSourcesRequest().WithType([]ingestion.SourceType{ingestion.SOURCE_TYPE_JSON, ingestion.SOURCE_TYPE_CSV, ingestion.SOURCE_TYPE_DOCKER, ingestion.SOURCE_TYPE_BIGQUERY}).WithItemsPerPage(100))
-	if err != nil {
-		return err
-	}
 
 	fmt.Println(opts.SourceID)
 
