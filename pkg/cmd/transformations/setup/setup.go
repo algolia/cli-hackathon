@@ -1,7 +1,6 @@
 package setup
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -115,7 +114,7 @@ func runNewCmd(opts *NewOptions) error {
 	opts.OutputDirectory = fmt.Sprintf("output%c%s", os.PathSeparator, opts.TransformationName)
 
 	if _, err := os.Stat(opts.OutputDirectory); !os.IsNotExist(err) {
-		return errors.New("something already present at path '%s', please clean the directory or change the name")
+		return fmt.Errorf("something already present at path '%s', please clean the directory or change the name", opts.OutputDirectory)
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Generating output package folder at path '%s'", opts.OutputDirectory))
