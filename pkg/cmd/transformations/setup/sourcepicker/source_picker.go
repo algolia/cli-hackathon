@@ -1,4 +1,4 @@
-package source_picker
+package sourcepicker
 
 import (
 	"fmt"

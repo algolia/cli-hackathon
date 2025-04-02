@@ -1,10 +1,9 @@
 package setup
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
@@ -12,7 +11,7 @@ import (
 
 	bubbleinput "github.com/algolia/cli/pkg/cmd/transformations/bubble/input"
 	"github.com/algolia/cli/pkg/cmd/transformations/setup/source_picker"
-	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformation_package_template"
+	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformationpackagetemplate"
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
@@ -50,7 +49,6 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 			# New transformation 
 			$ algolia transfo new <transformation-name>
 			$ algolia transfo new <transformation-name> --source <uuid>
-			$ algolia transfo new <transformation-name> --source <uuid> --file <path-to-file.json>
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) > 0 {
@@ -66,7 +64,6 @@ func NewSetupCmd(f *cmdutil.Factory) *cobra.Command {
 	}
 
 	cmd.Flags().StringVarP(&opts.SourceID, "source", "s", "", "The SourceID (UUID) to fetch sample from, when omitted, your list of source will be prompted.")
-	cmd.Flags().StringVarP(&opts.SampleFile, "file", "f", "", "Path to the file containing a sample JSON object to run your transformation against.")
 
 	opts.PrintFlags.AddFlags(cmd)
 
@@ -80,15 +77,15 @@ func runNewCmd(opts *NewOptions) error {
 	}
 
 	if opts.TransformationName == "" {
-		opts.TransformationName, err = bubbleinput.Prompt("What's your transformation name?")
-		if err != nil {
-			return err
-		}
-
-		if opts.TransformationName == "" {
-			panic("mdr")
+		for len(opts.TransformationName) == 0 {
+			opts.TransformationName, err = bubbleinput.Prompt("What's your transformation name?")
+			if err != nil {
+				return err
+			}
 		}
 	}
+
+	opts.TransformationName = strings.ReplaceAll(opts.TransformationName, " ", "_")
 
 	if opts.SampleFile == "" {
 		if opts.SourceID == "" {
@@ -112,27 +109,12 @@ func runNewCmd(opts *NewOptions) error {
 		}
 
 		opts.Sample = resp.GetData()[0]
-
-	} else {
-		opts.IO.StartProgressIndicatorWithLabel("Reading sample from file")
-
-		data, err := os.ReadFile(opts.SampleFile)
-		if err != nil {
-			return fmt.Errorf("unable to open file %s: %w", opts.SampleFile, err)
-		}
-
-		err = json.Unmarshal(data, &opts.Sample)
-		if err != nil {
-			return err
-		}
-
-		opts.IO.StopProgressIndicator()
 	}
 
-	opts.OutputDirectory = fmt.Sprintf("output%c%s", os.PathSeparator, opts.TransformationName)
+	opts.OutputDirectory = fmt.Sprintf("%c%s", os.PathSeparator, opts.TransformationName)
 
 	if _, err := os.Stat(opts.OutputDirectory); !os.IsNotExist(err) {
-		return errors.New("something already present at path '%s', please clean the directory or change the name")
+		return fmt.Errorf("something already present at path '%s', please clean the directory or change the name", opts.OutputDirectory)
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Generating output package folder at path '%s'", opts.OutputDirectory))
@@ -141,7 +123,7 @@ func runNewCmd(opts *NewOptions) error {
 		return fmt.Errorf("unable to create transformation folder with name '%s': %w", opts.OutputDirectory, err)
 	}
 
-	if err := transformation_package_template.Generate(transformation_package_template.PackageTemplate{
+	if err := transformationpackagetemplate.Generate(transformationpackagetemplate.PackageTemplate{
 		OutputDirectory:    opts.OutputDirectory,
 		TransformationName: opts.TransformationName,
 		Sample:             opts.Sample,
