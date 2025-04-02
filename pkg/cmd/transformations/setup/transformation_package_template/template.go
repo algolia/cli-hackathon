@@ -58,39 +58,6 @@ func Generate(tmpl PackageTemplate) error {
 	return nil
 }
 
-func (t PackageTemplate) generateTypedefFromSample() string {
-	var sb strings.Builder
-
-	sb.WriteString("/**\n * @typedef {Object} SourceRecord\n")
-
-	for key, value := range t.Sample {
-		jsType := ""
-
-		switch reflect.TypeOf(value).Kind() {
-		case reflect.String:
-			jsType = "string"
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
-			reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
-			reflect.Float32, reflect.Float64:
-			jsType = "number"
-		case reflect.Bool:
-			jsType = "boolean"
-		case reflect.Slice, reflect.Array:
-			jsType = "Array"
-		case reflect.Map, reflect.Struct:
-			jsType = "Object"
-		default:
-			jsType = "any"
-		}
-
-		sb.WriteString(fmt.Sprintf(" * @property {%s} %s\n", jsType, key))
-	}
-
-	sb.WriteString(" */\n")
-
-	return sb.String()
-}
-
 func (t PackageTemplate) execute(templateFile string, outputFile string, data any) error {
 	tmpl, err := template.New(templateFile).ParseFiles("pkg/cmd/transformations/setup/transformation_package_template/" + templateFile)
 	if err != nil {
