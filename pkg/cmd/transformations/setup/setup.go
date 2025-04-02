@@ -1,6 +1,7 @@
 package setup
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -23,7 +24,6 @@ type NewOptions struct {
 
 	IngestionClient func() (*ingestion.APIClient, error)
 
-	OutputDirectory    string
 	TransformationName string
 	SourceID           string
 	SampleFile         string
@@ -111,20 +111,13 @@ func runNewCmd(opts *NewOptions) error {
 		opts.Sample = resp.GetData()[0]
 	}
 
-	opts.OutputDirectory = fmt.Sprintf("%c%s", os.PathSeparator, opts.TransformationName)
-
-	if _, err := os.Stat(opts.OutputDirectory); !os.IsNotExist(err) {
-		return fmt.Errorf("something already present at path '%s', please clean the directory or change the name", opts.OutputDirectory)
+	if _, err = os.Stat("package.json"); !os.IsNotExist(err) {
+		return errors.New("something already present in the current working directory, please clean the directory or change the name")
 	}
 
-	opts.IO.StartProgressIndicatorWithLabel(fmt.Sprintf("Generating output package folder at path '%s'", opts.OutputDirectory))
-
-	if err := os.MkdirAll(opts.OutputDirectory, 0o750); err != nil {
-		return fmt.Errorf("unable to create transformation folder with name '%s': %w", opts.OutputDirectory, err)
-	}
+	opts.IO.StartProgressIndicatorWithLabel("Generating package")
 
 	if err := transformationpackagetemplate.Generate(transformationpackagetemplate.PackageTemplate{
-		OutputDirectory:    opts.OutputDirectory,
 		TransformationName: opts.TransformationName,
 		Sample:             opts.Sample,
 	}); err != nil {

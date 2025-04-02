@@ -48,7 +48,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 			$ algolia transformations import
 		`),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runImportCmd(opts, args)
+			return runImportCmd(opts)
 		},
 		Annotations: map[string]string{
 			"runInWebCLI": "true",
@@ -61,7 +61,7 @@ func NewImportCmd(f *cmdutil.Factory) *cobra.Command {
 	return cmd
 }
 
-func runImportCmd(opts *ImportOptions, args []string) error {
+func runImportCmd(opts *ImportOptions) error {
 	client, err := opts.IngestionClient()
 	if err != nil {
 		return err
@@ -117,7 +117,6 @@ func runImportCmd(opts *ImportOptions, args []string) error {
 	}
 
 	if err := transformationpackagetemplate.Generate(transformationpackagetemplate.PackageTemplate{
-		OutputDirectory:    outputDirectory,
 		TransformationName: res.Name,
 		Sample:             resp.GetData()[0],
 		Code:               &res.Code,

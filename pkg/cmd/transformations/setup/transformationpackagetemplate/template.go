@@ -8,7 +8,6 @@ import (
 )
 
 type PackageTemplate struct {
-	OutputDirectory    string
 	TransformationName string
 	Sample             map[string]any
 	Code               *string
@@ -54,12 +53,12 @@ func Generate(tmpl PackageTemplate) error {
 }
 
 func (t PackageTemplate) execute(templateFile string, outputFile string, data any) error {
-	tmpl, err := template.New(templateFile).ParseFiles("pkg/cmd/transformations/setup/transformation_package_template/" + templateFile)
+	tmpl, err := template.New(templateFile).ParseFiles("pkg/cmd/transformations/setup/transformationpackagetemplate/" + templateFile)
 	if err != nil {
 		return fmt.Errorf("unable to setup template for '%s' generator: %w", templateFile, err)
 	}
 
-	file, err := os.Create(fmt.Sprintf("%s%c%s", t.OutputDirectory, os.PathSeparator, outputFile))
+	file, err := os.Create(outputFile)
 	if err != nil {
 		return fmt.Errorf("unable to open '%s' file: %w", outputFile, err)
 	}
