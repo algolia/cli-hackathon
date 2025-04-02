@@ -2,21 +2,20 @@ package importTransfo
 
 import (
 	"fmt"
-	"os"
-
 	"github.com/MakeNowJust/heredoc"
 	"github.com/algolia/algoliasearch-client-go/v4/algolia/ingestion"
 	bubblelist "github.com/algolia/cli/pkg/cmd/transformations/bubble/list"
 	"github.com/algolia/cli/pkg/cmd/transformations/setup/sourcepicker"
 	"github.com/algolia/cli/pkg/cmd/transformations/setup/transformationpackagetemplate"
-	"github.com/charmbracelet/bubbles/list"
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
-
 	"github.com/algolia/cli/pkg/cmdutil"
 	"github.com/algolia/cli/pkg/config"
 	"github.com/algolia/cli/pkg/iostreams"
 	"github.com/algolia/cli/pkg/validators"
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
+	"os"
+	"time"
 )
 
 type ImportOptions struct {
@@ -68,14 +67,10 @@ func runImportCmd(opts *ImportOptions) error {
 	}
 
 	if opts.TransformationID == "" {
-		opts.IO.StartProgressIndicatorWithLabel("Listing transformations")
-
 		opts.TransformationID, err = PickTransformation(client)
 		if err != nil {
 			return err
 		}
-
-		opts.IO.StopProgressIndicator()
 	}
 
 	opts.IO.StartProgressIndicatorWithLabel("Fetching transformation")
@@ -125,7 +120,13 @@ func PickTransformation(client *ingestion.APIClient) (string, error) {
 	items := make([]list.Item, 0, len(resp.Transformations))
 
 	for _, transformation := range resp.Transformations {
-		items = append(items, bubblelist.Item{Name: transformation.GetName(), UUID: transformation.GetTransformationID()})
+		parse, _ := time.Parse(time.RFC3339, *transformation.UpdatedAt)
+		items = append(items, bubblelist.Item{Name: fmt.Sprintf("%s (%s) - %s", transformation.GetName(), func() string {
+			if transformation.Description != nil {
+				return *transformation.Description
+			}
+			return "No description"
+		}(), parse.String()), UUID: transformation.GetTransformationID()})
 	}
 
 	list := bubblelist.NewBubbleList("transformations", items)
